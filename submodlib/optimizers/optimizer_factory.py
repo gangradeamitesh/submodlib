@@ -3,7 +3,7 @@ from naive_greedy import NaiveGreedy
 from stochastic_greedy import StochasticGreedy
 from lazy_greedy import LazyGreedy
 from lazier_greedy import LazierThanLazyGreedy
-from utils.contants import Constant
+from submodlib.submodlib.basicfunctions.contants import Constant
 
 class OptimizerFactory:
     def get_optimizer(self , optimizer):

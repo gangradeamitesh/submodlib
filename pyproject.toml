@@ -36,15 +36,9 @@ markers = [
 ]
 
 [project]
-name = "submodlib-py"
-version = "0.0.1"
-authors = [
-  {name="Vishal Kaushal", email="vkaushal@cse.iitb.ac.in" },
-  { name="Krishnateja Killamsetty", email="krishnateja.k@ibm.com" },
-  { name="Suraj Kothawade", email="skothawade@google.com" },
-  { name = "Ganesh Ramakrishnan", email = "ganesh@cse.iitb.ac.in" },
-  { name = "Rishabh Iyer", email = "rishabh.iyer@utdallas.edu"},
-]
+name = "submod-demo"
+version = "1.0.1"
+
 description = "SubModLib is an easy-to-use, efficient and scalable Python library for submodular optimization with a C++ optimization engine. Submodlib finds its application in summarization, data subset selection, hyper parameter tuning, efficient training etc. Through a rich API, it offers a great deal of flexibility in the way it can be used."
 readme = "README.md"
 requires-python = ">=3.8"
@@ -63,8 +57,4 @@ dependencies = [
     "pandas",
     "joblib",
 ]
-
-[project.urls]
-Homepage = "https://github.com/decile-team/submodlib"
-Issues = "https://github.com/decile-team/submodlib/issues"
 

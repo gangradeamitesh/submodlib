@@ -1,6 +1,6 @@
 from userValidator import *
 import torch as t
-from cal_simi_kernel import DenseSimilarity
+from utils.cal_simi_kernel import DenseSimilarity
 from base_function import BaseFunction
 from optimizers.optimizer_factory import OptimizerFactory
 
@@ -63,7 +63,7 @@ class FacilityLocation(BaseFunction):
         
         def maximize(self , optimizer , budget , stopIfZeroGain , stopIfNegativeGain , epsilon , verbose , show_progress , costs , costSensitiveGreedy):
             """Maximize the function using the optimizer"""
-            self.optimizer = OptimizerFactory.getOptimizer(optimizer)
+            self.optimizer = OptimizerFactory.get_optimizer(optimizer)
             output = self.optimizer.optimiz(self , budget , stopIfZeroGain , stopIfNegativeGain , epsilon , verbose , show_progress , costs , costSensitiveGreedy)
             return output
         def marginalGain(self , X , element):
