@@ -3,7 +3,6 @@ from abc import ABC, abstractmethod
 class BaseOptimizer:
 
     def __init__(self) -> None:
-        
         pass
     
     @abstractmethod

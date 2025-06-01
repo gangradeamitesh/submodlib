@@ -1,5 +1,5 @@
 from userValidator import *
-import torch as t
+import torch
 from utils.cal_simi_kernel import DenseSimilarity
 from base_function import BaseFunction
 from optimizers.optimizer_factory import OptimizerFactory
@@ -32,6 +32,7 @@ class FacilityLocation(BaseFunction):
         self.effective_ground = None
         self.create_dense_kernel = create_dense_cpp_kernel_in_python
         self.optimizer = None
+        super().__init__()
 
         """Validating the input"""
         validate_n(self.n)
@@ -68,9 +69,20 @@ class FacilityLocation(BaseFunction):
             return output
         def marginalGain(self , X , element):
             print("Marginal Gain")
-            pass
+            if element in X:
+                return 0    
+            X_list = list(X)
+            current_val = self.evaluate(X)
+            X_new = X_list + [element]
+            new_val = self.evaluate(X_new)
+            return new_val - current_val
+
         def evaluate(self , evaluate_set):
-            pass
+            if not evaluate_set:
+                return 0
+            X_list = list(evaluate_set)
+            similarity_scores = self.sijs[:,X_list]
+            return torch.sum(torch.max(similarity_scores, dim=1)[0])
         def marginalGainWithMemoization(self , X , element):
             pass
         def evalauteWithMemoization(self , evaluate_set):
@@ -82,7 +94,7 @@ class FacilityLocation(BaseFunction):
         def setMemoization(self , X):
             pass
         def getEffectiveGroundSet(self):
-            pass
+            return self.n
 
 
 if __name__ == "__main__":
