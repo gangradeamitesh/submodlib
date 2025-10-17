@@ -1,15 +1,16 @@
-from userValidator import *
+from userValidator import validate_n , validate_mode , validate_sep_rep , validate_sijs
 import torch
-from utils.cal_simi_kernel import DenseSimilarity
+from cal_simi_kernel import DenseSimilarity
 from base_function import BaseFunction
 from optimizers.optimizer_factory import OptimizerFactory
+import numpy as np
 
-class FacilityLocation(BaseFunction):
+class FacilityLocation():
     """"Similarity kernel , data should be a torch kernel
     and if provided as numpy arrray. 
     1.Add functioality to convert the numpy array to torch tensor"""
 
-    def __init__(self , n , mode , separate_rep=None , n_rep = None , sijs=None , data = None , data_rep = None , num_clusters=None , cluster_labels=None , metric="cosine" , num_neighbors = None , create_dense_cpp_kernel_in_python=None , pybind_mode=None) -> None:
+    def __init__(self , n , mode = "dense" , separate_rep=None , n_rep = None , sijs=None , data = None , data_rep = None , num_clusters=None , cluster_labels=None , metric="cosine" , num_neighbors = None , create_dense_cpp_kernel_in_python=None , pybind_mode=None) -> None:
         self.n = n
         self.n_rep = n_rep
         self.mode = mode
@@ -32,6 +33,7 @@ class FacilityLocation(BaseFunction):
         self.effective_ground = None
         self.create_dense_kernel = create_dense_cpp_kernel_in_python
         self.optimizer = None
+        self.optimizer_factory = OptimizerFactory()
         super().__init__()
 
         """Validating the input"""
@@ -53,7 +55,7 @@ class FacilityLocation(BaseFunction):
             if type(self.data) != type(None) or type(self.data_rep) != type(None):
                 print("WARNING: similarity kernel found. Provided data matrix will be ignored.")
         else:#similarity kernel not provided
-            if self.data == None:
+            if self.data.any() == None:
                 raise Exception("ERROR: Data matrix not provided")
             if self.create_dense_kernel==True and self.mode=="dense" and self.metric=="euclidean":
                 self.sijs = DenseSimilarity.euclidean_distance(self.data)
@@ -62,39 +64,40 @@ class FacilityLocation(BaseFunction):
             else:
                 raise Exception("ERROR: Neither ground set data matrix nor similarity kernel provided")
         
-        def maximize(self , optimizer , budget , stopIfZeroGain , stopIfNegativeGain , epsilon , verbose , show_progress , costs , costSensitiveGreedy):
-            """Maximize the function using the optimizer"""
-            self.optimizer = OptimizerFactory.get_optimizer(optimizer)
-            output = self.optimizer.optimiz(self , budget , stopIfZeroGain , stopIfNegativeGain , epsilon , verbose , show_progress , costs , costSensitiveGreedy)
-            return output
-        def marginalGain(self , X , element):
-            print("Marginal Gain")
-            if element in X:
-                return 0    
-            X_list = list(X)
-            current_val = self.evaluate(X)
-            X_new = X_list + [element]
-            new_val = self.evaluate(X_new)
-            return new_val - current_val
+    def maximize(self , optimizer , budget , stopIfZeroGain , stopIfNegativeGain , epsilon , verbose , show_progress , costs , costSensitiveGreedy):
+        """Maximize the function using the optimizer"""
+        print("Optimizer")
+        self.optimizer = self.optimizer_factory.get_optimizer(optimizer=optimizer)
+        output = self.optimizer.maximize(self , budget , stopIfZeroGain , stopIfNegativeGain , epsilon , verbose , show_progress , costs , costSensitiveGreedy)
+        return output
+    def marginalGain(self , X , element):
+        print("Marginal Gain")
+        if element in X:
+            return 0    
+        X_list = list(X)
+        current_val = self.evaluate(X)
+        X_new = X_list + [element]
+        new_val = self.evaluate(X_new)
+        return new_val - current_val
 
-        def evaluate(self , evaluate_set):
-            if not evaluate_set:
-                return 0
-            X_list = list(evaluate_set)
-            similarity_scores = self.sijs[:,X_list]
-            return torch.sum(torch.max(similarity_scores, dim=1)[0])
-        def marginalGainWithMemoization(self , X , element):
-            pass
-        def evalauteWithMemoization(self , evaluate_set):
-            pass
-        def updateMemoization(self , X):
-            pass
-        def clearMemoization(self):
-            pass
-        def setMemoization(self , X):
-            pass
-        def getEffectiveGroundSet(self):
-            return self.n
+    def evaluate(self , evaluate_set):
+        if not evaluate_set:
+            return 0
+        X_list = list(evaluate_set)
+        similarity_scores = self.sijs[:,X_list]
+        return torch.sum(torch.max(similarity_scores, dim=1)[0])
+    def maginalGainWithMemoization(self , X , element):
+        pass
+    def evalauteWithMemoization(self , evaluate_set):
+        pass
+    def updateMemoization(self , X):
+        pass
+    def clearMemoization(self):
+        pass
+    def setMemoization(self , X):
+        pass
+    def getEffectiveGroundSet(self):
+        return self.n   
 
 
 if __name__ == "__main__":
@@ -109,5 +112,6 @@ if __name__ == "__main__":
     xs = [x[0] for x in data]
     ys = [x[1] for x in data]
     dataArray = np.array(data)
-    fl_object = FacilityLocation(n=500, mode="dense", data=dataArray, metric="euclidean")
+    dataTensor = torch.tensor(dataArray , dtype=torch.float32)
+    fl_object = FacilityLocation(n=500, mode="dense", data=dataTensor, create_dense_cpp_kernel_in_python=True ,metric="cosine")
     print(fl_object.maximize(optimizer="NaiveGreedy", budget=10, stopIfZeroGain=False, stopIfNegativeGain=False, epsilon=0.1, verbose=False, show_progress=True, costs=None, costSensitiveGreedy=False))

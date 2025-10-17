@@ -14,7 +14,7 @@ class DenseSimilarity:
         return torch.cdist(data, data, p=2)
     
     @staticmethod
-    def consine_similarity(data):
+    def cosine_similarity(data):
         """Compute the pairwise cosine similarity between data points."""
 
         data = F.normalize(data, p=2, dim=1)

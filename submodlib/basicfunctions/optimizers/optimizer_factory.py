@@ -1,8 +1,8 @@
-from naive_greedy import NaiveGreedy
-from stochastic_greedy import StochasticGreedy
-from lazy_greedy import LazyGreedy
-from lazier_greedy import LazierThanLazyGreedy
-from submodlib.basicfunctions.constants import Constant
+from .naive_greedy import NaiveGreedy
+from .stochastic_greedy import StochasticGreedy
+from .lazy_greedy import LazyGreedy
+#from .lazier_greedy import LazierThanLazyGreedy
+from .constants import Constant
 
 class OptimizerFactory:
     def get_optimizer(self , optimizer):
@@ -12,7 +12,7 @@ class OptimizerFactory:
             return StochasticGreedy()
         elif optimizer==Constant.lazy_greedy:
             return LazyGreedy()
-        elif optimizer==Constant.lazier_greedy:
-            return LazierThanLazyGreedy()
+        # elif optimizer==Constant.lazier_greedy:
+        #     return LazierThanLazyGreedy()
         else:
             raise Exception("Invalid optimizer. Can be {Constant.naive_greedy}, {Constant.stocastic_greedy},  and 'LazierThanLazyGreedy'.")

@@ -1,5 +1,5 @@
 
-from base_optimizer import BaseOptimizer
+from .base_optimizer import BaseOptimizer
 
 class LazyGreedy(BaseOptimizer):
     def __init__(self) -> None:

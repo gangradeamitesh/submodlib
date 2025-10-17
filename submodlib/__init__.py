@@ -2,6 +2,7 @@
 # Author: Vishal Kaushal <vishal.kaushal@gmail.com>
 
 from .version import __version__
+from .basicfunctions import FacilityLocation
 from .functions import FacilityLocationFunction
 from .functions import GraphCutFunction
 from .functions import SetCoverFunction

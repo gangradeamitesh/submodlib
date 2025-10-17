@@ -1,5 +1,5 @@
 from .facility_location import FacilityLocation
-from .constants import Constant
+from .optimizers.constants import Constant
 
 __all__ = [
     'FacilityLocation',
