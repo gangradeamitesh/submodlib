@@ -10,8 +10,8 @@ class NaiveGreedy(BaseOptimizer):
     def __init__(self):
         pass
 
-    def optimize(self, function, budget, stopIfZeroGain, stopIfNegativeGain, epsilon, 
-                 verbose, show_progress, costs, costSensitiveGreedy):
+    def optimize(self, function, budget, stopIfZeroGain=False, stopIfNegativeGain=False, epsilon=None, 
+                 verbose=False, show_progress=True, costs=None, costSensitiveGreedy=False):
         """
         Optimize the submodular function using naive greedy algorithm.
         
@@ -34,7 +34,8 @@ class NaiveGreedy(BaseOptimizer):
         
         # Initialize
         selected = set()
-        ground_set = set(range(function.getEffectiveGroundSet()))
+        selected_pairs = set()
+        ground_set = function.getEffectiveGroundSet()
         
         # Initialize memoization for the empty set
         function.setMemoization(selected)
@@ -60,6 +61,7 @@ class NaiveGreedy(BaseOptimizer):
                 if gain > best_gain:
                     best_gain = gain
                     best_element = element
+                    output_pair = (element, gain)
             
             # Check stopping conditions
             if best_element is None:
@@ -79,6 +81,7 @@ class NaiveGreedy(BaseOptimizer):
             
             # Add best element to selected set
             selected.add(best_element)
+            selected_pairs.add(output_pair)
             
             # Update memoization
             if hasattr(function, 'updateMemoization'):
@@ -92,4 +95,4 @@ class NaiveGreedy(BaseOptimizer):
             final_value = function.evaluateWithMemoization(selected) if hasattr(function, 'evaluateWithMemoization') else function.evaluate(selected)
             print(f"Optimization complete. Selected {len(selected)} elements with final value: {final_value:.4f}")
         
-        return list(selected)
+        return list(selected_pairs)

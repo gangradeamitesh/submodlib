@@ -117,8 +117,8 @@ class FacilityLocation(BaseFunction):
             self.similarity_with_nearest_in_effective_x = torch.zeros(self.n_master, dtype=torch.float32)
             self.memoization_initialized = True
 
-    def maximize(self, optimizer, budget, stopIfZeroGain, stopIfNegativeGain, epsilon, 
-                 verbose, show_progress, costs, costSensitiveGreedy):
+    def maximize(self, optimizer, budget, stopIfZeroGain=False, stopIfNegativeGain=False, epsilon=None, 
+                 verbose=False, show_progress=True, costs=None, costSensitiveGreedy=False):
         """Maximize the function using the optimizer"""
         optimizer_factory = OptimizerFactory()
         optimizer_obj = optimizer_factory.get_optimizer(optimizer)
@@ -257,11 +257,9 @@ class FacilityLocation(BaseFunction):
 
 
 if __name__ == "__main__":
-    print("Running Facility Location test similar to Different_Options_for_Usage tutorial")
-    import matplotlib.pyplot as plt
+    print("Testing Facility Location Implementation")
     from sklearn.datasets import make_blobs
-    
-    # Generate data like the tutorial
+    import random
     num_clusters = 10
     cluster_std_dev = 4
     points, cluster_ids, centers = make_blobs(n_samples=500, centers=num_clusters, 
@@ -270,93 +268,33 @@ if __name__ == "__main__":
     data = list(map(tuple, points))
     xs = [x[0] for x in data]
     ys = [x[1] for x in data]
+    import numpy as np
     dataArray = np.array(data)
-    
-    print(f"Data shape: {dataArray.shape}")
-    print(f"Number of clusters: {num_clusters}")
-    
-    # Create some test subsets (like tutorial)
-    # Get points from first cluster
-    cluster_0_indices = [i for i, cid in enumerate(cluster_ids) if cid == 0]
-    subset1 = cluster_0_indices[:5]  # First 5 points from cluster 0
-    set1 = set(subset1)
-    
-    # Get points from different cluster
-    cluster_1_indices = [i for i, cid in enumerate(cluster_ids) if cid == 1]
-    subset2 = cluster_1_indices[:5]  # First 5 points from cluster 1
-    set2 = set(subset2)
-    
-    print(f"Subset 1 (cluster 0): {subset1}")
-    print(f"Subset 2 (cluster 1): {subset2}")
-    
-    # Convert to torch tensor
-    dataTensor = torch.tensor(dataArray, dtype=torch.float32)
-    
-    # Create Facility Location object (like tutorial)
-    try:
-        obj1 = FacilityLocation(n=500, mode="dense", data=dataTensor, metric="euclidean")
-        print("Facility Location object created successfully!")
-        print(f"Similarity matrix shape: {obj1.sijs.shape}")
-        
-        # Test evaluation (like tutorial)
-        print(f"Subset 1's FL value = {obj1.evaluate(set1)}")
-        print(f"Subset 2's FL value = {obj1.evaluate(set2)}")
-        
-        # Test marginal gains (like tutorial)
-        print(f"Gain of adding another point ({subset1[-1]}) of same cluster to {set1} = {obj1.marginalGain(set1, subset1[-1])}")
-        print(f"Gain of adding another point ({subset2[-1]}) of different cluster to {set1} = {obj1.marginalGain(set1, subset2[-1])}")
-        
-        # Test memoization (like tutorial)
-        obj1.setMemoization(set1)
-        print(f"Subset 1's Fast FL value = {obj1.evaluateWithMemoization(set1)}")
-        print(f"Fast gain of adding another point ({subset1[-1]}) of same cluster to {set1} = {obj1.marginalGainWithMemoization(set1, subset1[-1])}")
-        
-        # Test maximization (like tutorial)
-        print("\nRunning greedy maximization...")
-        try:
-            greedyList = obj1.maximize(budget=10, optimizer='NaiveGreedy', 
-                                     stopIfZeroGain=False, stopIfNegativeGain=False, verbose=False)
-            print(f"Greedy vector: {greedyList}")
-            
-            # Extract coordinates for visualization (like tutorial)
-            if greedyList:
-                greedyXs = [xs[element] for element in greedyList]
-                greedyYs = [ys[element] for element in greedyList]
-                
-                # Create visualization (like tutorial)
-                plt.figure(figsize=(12, 8))
-                plt.scatter(xs, ys, s=25, color='black', label="Images")
-                plt.scatter(greedyXs, greedyYs, s=25, color='blue', label="Greedy Set")
-                
-                plt.xlabel('X coordinate')
-                plt.ylabel('Y coordinate')
-                plt.title('Facility Location - Greedy Selection')
-                plt.legend()
-                plt.grid(True, alpha=0.3)
-                plt.show()
-                
-                # Print final function value
-                final_value = obj1.evaluate(set(greedyList))
-                print(f"Final function value: {final_value:.4f}")
-            
-        except Exception as e:
-            print(f"Maximization failed: {e}")
-            print("This is expected if the optimizer is not fully implemented yet.")
-            
-    except Exception as e:
-        print(f"Failed to create Facility Location object: {e}")
-        print("Falling back to simple test...")
-        
-        # Fallback: simple test
-        fl_simple = FacilityLocation(n=500, mode="dense", data=dataTensor, metric="euclidean")
-        
-        print("Simple Facility Location object created!")
-        print(f"Similarity matrix shape: {fl_simple.sijs.shape}")
-        
-        # Test basic functionality
-        test_set = {0, 1, 2}
-        test_value = fl_simple.evaluate(test_set)
-        print(f"Function value for test set {test_set}: {test_value:.4f}")
-        
-        marginal_gain = fl_simple.marginalGain(test_set, 3)
-        print(f"Marginal gain of adding element 3: {marginal_gain:.4f}")
+    random.seed(1)
+    cluster1Indices = [index for index, val in enumerate(cluster_ids) if val == 1]
+    subset1 = random.sample(cluster1Indices, 6)
+    subset1xs = [xs[x] for x in subset1]
+    subset1ys = [ys[x] for x in subset1]
+    set1 = set(subset1[:-1])
+    subset2 = []
+    for i in range(6):
+        #find the index of first point that belongs to cluster i
+        diverse_index = cluster_ids.tolist().index(i)
+        subset2.append(diverse_index)
+    subset2xs = [xs[x] for x in subset2]
+    subset2ys = [ys[x] for x in subset2]
+    set2 = set(subset2[:-1])
+    obj1 = FacilityLocation(n=500, mode="dense", data=dataArray, metric="euclidean")
+    print(f"Subset 1's FL value = {obj1.evaluate(set1)}")
+    print(f"Subset 2's FL value = {obj1.evaluate(set2)}")
+    print(f"Gain of adding another point ({subset1[-1]}) of same cluster to {set1} = {obj1.marginalGain(set1, subset1[-1])}")
+    print(f"Gain of adding another point ({subset2[-1]}) of different cluster to {set1} = {obj1.marginalGain(set1, subset2[-1])}")
+    obj1.setMemoization(set1)
+    print(f"Subset 1's Fast FL value = {obj1.evalauteWithMemoization(set1)}")
+    print(f"Fast gain of adding another point ({subset1[-1]}) of same cluster to {set1} = {obj1.maginalGainWithMemoization(set1, subset1[-1])}")
+    #start = time.process_time()
+    greedyList = obj1.maximize(budget=10,optimizer='NaiveGreedy', stopIfZeroGain=False, stopIfNegativeGain=False, verbose=False)
+    #print(f"Time taken by maximization = {time.process_time() - start}")
+    print(f"Greedy vector: {greedyList}")
+    greedyXs = [xs[x[0]] for x in greedyList]
+    greedyYs = [ys[x[0]] for x in greedyList]
