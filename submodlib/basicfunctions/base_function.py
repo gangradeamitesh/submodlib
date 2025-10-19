@@ -18,11 +18,11 @@ class BaseFunction(ABC):
         """Evalaute the function on the given set"""
         pass 
     @abstractmethod
-    def maginalGainWithMemoization(self , X , element):
+    def marginalGainWithMemoization(self , X , element):
         """Compute the marginal gain of adding an element to the set with memoization"""
         pass
     @abstractmethod
-    def evalauteWithMemoization(self , evaluate_set):
+    def evaluateWithMemoization(self , evaluate_set):
         """Evaluate the function on the given set with memoization"""
         pass
     @abstractmethod

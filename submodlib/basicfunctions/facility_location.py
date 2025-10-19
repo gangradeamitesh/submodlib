@@ -127,16 +127,11 @@ class FacilityLocation(BaseFunction):
         return output
 
     def evaluate(self, evaluate_set):
-        """
-        Evaluate the facility location function on a set.
-        Returns sum over all master items of their maximum similarity to any item in the set.
-        """
         if not evaluate_set:
             return 0.0
         
-        # Handle partial ground set (like C++ lines 286-292)
+
         if self.partial:
-            # effectiveX = intersect(X, effectiveGroundSet)
             effective_x = evaluate_set & self.effective_ground_set
         else:
             effective_x = evaluate_set
@@ -147,14 +142,11 @@ class FacilityLocation(BaseFunction):
         X_list = list(effective_x)
         X_tensor = torch.tensor(X_list, dtype=torch.long)
         
-        # Get similarity scores for all master items with items in X
-        # self.sijs shape: [n_master, n_ground]
         similarity_scores = self.sijs[:, X_tensor]  # Shape: [n_master, |X|]
         
-        # For each master item, find maximum similarity to any item in X
+
         max_similarities = torch.max(similarity_scores, dim=1)[0]  # Shape: [n_master]
         
-        # Sum over all master items
         return torch.sum(max_similarities).item()
 
     def marginalGain(self, X, element):
@@ -165,17 +157,16 @@ class FacilityLocation(BaseFunction):
         if element in X:
             return 0.0
         
-        # Check if element is in effective ground set (like C++ lines 394-396)
+
         if element not in self.effective_ground_set:
             return 0.0
         
-        # Simple implementation: evaluate difference
         current_val = self.evaluate(X)
         X_new = X | {element}  # Use set union
         new_val = self.evaluate(X_new)
         return new_val - current_val
 
-    def maginalGainWithMemoization(self, X, element):
+    def marginalGainWithMemoization(self, X, element):
         """
         Compute marginal gain using memoization for efficiency.
         This is the key optimization that makes greedy algorithms fast.
@@ -183,7 +174,7 @@ class FacilityLocation(BaseFunction):
         if element in X:
             return 0.0
         
-        # Check if element is in effective ground set
+
         if element not in self.effective_ground_set:
             return 0.0
         
@@ -193,7 +184,6 @@ class FacilityLocation(BaseFunction):
         gain = 0.0
         element_tensor = torch.tensor(element, dtype=torch.long)
         
-        # For each master item, check if adding element improves the best similarity
         for master_idx in range(self.n_master):
             current_best = self.similarity_with_nearest_in_effective_x[master_idx]
             new_similarity = self.sijs[master_idx, element_tensor].item()
@@ -203,7 +193,7 @@ class FacilityLocation(BaseFunction):
         
         return gain
 
-    def evalauteWithMemoization(self, evaluate_set):
+    def evaluateWithMemoization(self, evaluate_set):
         """
         Evaluate using pre-computed memoization.
         Assumes memoization is up-to-date for the given set.
