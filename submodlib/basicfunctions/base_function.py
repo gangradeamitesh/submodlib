@@ -2,9 +2,18 @@ from abc import ABC , abstractmethod
 
 class BaseFunction(ABC):
 
-    def __init__(self) -> None:
-        pass
-    
+    def __init__(self,n , mode="dense",sijs=None,data=None,num_clusters=None,cluster_label=None,metric="cosine") -> None:
+        self.n = n
+        self.mode = mode
+        self.metric = metric
+        self.sijs = sijs
+        self.data = data
+        self.clusters = None
+        self.cluster_sijs = None
+        self.cluster_map = None
+        self.num_clusters = num_clusters
+        
+
     @abstractmethod
     def maximize(self , optimizer , budget , stopIfZeroGain , stopIfNegativeGain , epsilon , verbose , show_progress , costs , costSensitiveGreedy):
         """Maximize the function using the optimizer"""
