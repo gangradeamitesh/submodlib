@@ -4,6 +4,8 @@ from submodlib.sub_modularfunctions.optimizers.optimizer_factory import Optimize
 import torch
 from submodlib.sub_modularfunctions.userValidator import validate_n, validate_mode, validate_sep_rep , validate_sijs
 from submodlib.sub_modularfunctions.cal_simi_kernel import DenseSimilarity
+
+"""TODO: To implement the lambda functionlity for graph cut"""
 class GraphCut(BaseFunction):
 
     def __init__(self, n, mode="dense", seperate_rep=None, n_rep=None, sijs=None, 
