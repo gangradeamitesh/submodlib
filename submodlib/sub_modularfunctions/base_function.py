@@ -2,7 +2,7 @@ from abc import ABC , abstractmethod
 
 class BaseFunction(ABC):
 
-    def __init__(self,n , mode="dense",sijs=None,data=None,num_clusters=None,cluster_label=None,metric="cosine",cluster_labels=None) -> None:
+    def __init__(self,n , mode="dense",sijs=None,data=None,num_clusters=None,cluster_label=None,metric="cosine",cluster_labels=None,query_data=None,query_sijs=None) -> None:
         self.n = n
         self.mode = mode
         self.metric = metric
@@ -13,6 +13,8 @@ class BaseFunction(ABC):
         self.cluster_labels = cluster_labels
         self.num_clusters = num_clusters
         self.sijs = sijs
+        self.query_data = query_data
+        self.query_sijs = query_sijs
         
 
     @abstractmethod

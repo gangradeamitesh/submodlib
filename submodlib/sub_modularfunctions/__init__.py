@@ -15,4 +15,4 @@ __all__ = [
     'DenseSimilarity',
     'BaseFunction'
     'OptimizerFactory'
-] 
+]

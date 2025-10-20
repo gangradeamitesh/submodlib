@@ -54,9 +54,9 @@ class GraphCut(BaseFunction):
                 self.data = torch.tensor(self.data, dtype=torch.float32)
             
             if self.create_dense_kernel == True and self.mode == "dense" and self.metric == "euclidean":
-                self.sijs = DenseSimilarity.euclidean_distance(self.data)
+                self.sijs = DenseSimilarity.euclidean_distance(self.data,self.data)
             elif self.create_dense_kernel == True and self.mode == "dense" and self.metric == "cosine":
-                self.sijs = DenseSimilarity.cosine_similarity(self.data)
+                self.sijs = DenseSimilarity.cosine_similarity(self.data,self.data)
             else:
                 raise Exception("ERROR: Neither ground set data matrix nor similarity kernel provided")
     
