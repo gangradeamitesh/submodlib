@@ -1,3 +1,4 @@
+
 from submodlib.sub_modularfunctions.base_function import BaseFunction
 import userValidator 
 from userValidator import validate_n, validate_sep_rep , validate_sijs
@@ -6,7 +7,9 @@ from cal_simi_kernel import DenseSimilarity
 import numpy as np
 from optimizers import OptimizerFactory
 
-class FacilityLocationMutualInformation(BaseFunction):
+"""TODO : To implement all the functionlity for Graph Cut Mutual Information Function"""
+
+class GraphCutMutualInformation(BaseFunction):
     def __init__(self, n , num_queries , data_sijs=None, query_sijs=None,
                  data=None, query_data=None, metric="cosine", magnificationEta=1):
         """
@@ -19,10 +22,7 @@ class FacilityLocationMutualInformation(BaseFunction):
         """
 
         super().__init__(n=n, sijs=data_sijs, data=data, metric=metric,query_data=query_data,query_sijs=query_sijs)
-        self.magnificationEta = magnificationEta
-        self.effective_ground_set = None
-        self.query_cap = None
-
+       
 
         validate_n(self.n)
         if self.sijs is not None:
@@ -71,27 +71,16 @@ class FacilityLocationMutualInformation(BaseFunction):
 
     def marginalGain(self , X , element):
         """Compute the marginal gain of adding an element to the set"""
-        if element in X:
-            return 0.0
-        if element not in self.effective_ground_set:
-            return 0.0
-        curr_val = self.evaluate(X)
-        X_new = X | {element}
-        new_val = self.evaluate(X_new)
-        return new_val - curr_val
+        pass
+
 
     def evaluate(self , evaluate_set):
         """Evalaute the function on the given set"""
-        if not evaluate_set:
-            return 0.0
-        X_tensor = torch.tensor(list(evaluate_set), dtype=torch.long)
-        return torch.minimum(torch.max(self.sijs[:,X_tensor],dim=1).values,self.query_cap).sum()
-    
+        pass
 
     def marginalGainWithMemoization(self , X , element):
         """Compute the marginal gain of adding an element to the set with memoization"""
         pass
-
     def evaluateWithMemoization(self , evaluate_set):
         """Evaluate the function on the given set with memoization"""
         pass

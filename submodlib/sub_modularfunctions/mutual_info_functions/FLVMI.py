@@ -6,9 +6,9 @@ from cal_simi_kernel import DenseSimilarity
 import numpy as np
 from optimizers import OptimizerFactory
 
-class FacilityLocationMutualInformation(BaseFunction):
+class FacilityLocationVariantMutualInformation(BaseFunction):
     def __init__(self, n , num_queries , data_sijs=None, query_sijs=None,
-                 data=None, query_data=None, metric="cosine", magnificationEta=1):
+                 data=None, query_data=None, metric="cosine", queryDiversityEta=1):
         """
         Initializes the Facility Location Mutual Information Function.
 
@@ -19,7 +19,7 @@ class FacilityLocationMutualInformation(BaseFunction):
         """
 
         super().__init__(n=n, sijs=data_sijs, data=data, metric=metric,query_data=query_data,query_sijs=query_sijs)
-        self.magnificationEta = magnificationEta
+        self.queryDiversityEta = queryDiversityEta
         self.effective_ground_set = None
         self.query_cap = None
 
@@ -57,7 +57,7 @@ class FacilityLocationMutualInformation(BaseFunction):
         self._initialize_query_cap(self.query_sijs)
 
     def _initialize_query_cap(self, query_sijs):
-        self.query_cap = self.magnificationEta * torch.max(query_sijs, dim=1).values
+        self.query_cap = self.queryDiversityEta * torch.sum(torch.max(query_sijs, dim=1)).values
     
     def _initialize_ground_sets(self):
         """Initialize effective ground set and master set like C++ version"""
@@ -85,7 +85,7 @@ class FacilityLocationMutualInformation(BaseFunction):
         if not evaluate_set:
             return 0.0
         X_tensor = torch.tensor(list(evaluate_set), dtype=torch.long)
-        return torch.minimum(torch.max(self.sijs[:,X_tensor],dim=1).values,self.query_cap).sum()
+        return torch.sum(torch.max(self.sijs[:,X_tensor])).values + self.query_cap
     
 
     def marginalGainWithMemoization(self , X , element):

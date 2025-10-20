@@ -103,11 +103,8 @@ class FacilityLocation(BaseFunction):
     def maximize(self, optimizer, budget, stopIfZeroGain=False, stopIfNegativeGain=False, epsilon=None, 
                  verbose=False, show_progress=True, costs=None, costSensitiveGreedy=False):
         """Maximize the function using the optimizer"""
-        optimizer_factory = OptimizerFactory()
-        optimizer_obj = optimizer_factory.get_optimizer(optimizer)
-        output = optimizer_obj.optimize(self, budget, stopIfZeroGain, stopIfNegativeGain, 
-                                       epsilon, verbose, show_progress, costs, costSensitiveGreedy)
-        return output
+        optimizer_instance = OptimizerFactory.get_optimizer(optimizer)
+        return optimizer_instance.optimize(self , budget , stopIfZeroGain , stopIfNegativeGain , epsilon , verbose , show_progress , costs , costSensitiveGreedy)
 
     def evaluate(self, evaluate_set):
         if not evaluate_set:
