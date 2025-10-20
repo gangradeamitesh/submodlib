@@ -12,29 +12,18 @@ class FacilityLocation(BaseFunction):
     The function value for a set X is: sum over all master items of their maximum similarity to any item in X.
     """
 
-    def __init__(self, n, mode="dense", separate_rep=None, n_rep=None, sijs=None, 
+    def __init__(self, n, mode="dense", seperate_rep=None, n_rep=None, sijs=None, 
                  data=None, data_rep=None, num_clusters=None, cluster_labels=None, 
                  metric="cosine", num_neighbors=None, create_dense_cpp_kernel_in_python=True, 
                  pybind_mode=None, partial=False, ground_set=None, separate_master=False):
         
-        self.n = n
+        super().__init__(n=n, mode=mode, sijs=sijs, data=data,cluster_label=cluster_labels , num_clusters=num_clusters, metric=metric)
+
         self.n_rep = n_rep
-        self.mode = mode
-        self.metric = metric
-        self.sijs = sijs
-        self.data = data
+        
         self.data_rep = data_rep
         self.num_neighbors = num_neighbors
-        self.separate_rep = separate_rep
-        self.clusters = None
-        self.cluster_sijs = None
-        self.cluster_map = None
-        self.cluster_labels = cluster_labels
-        self.num_clusters = num_clusters
-        self.cpp_obj = None
-        self.cpp_sijs = None
-        self.cpp_ground_sub = None
-        self.cpp_content = None
+        self.separate_rep = seperate_rep
         self.effective_ground = None
         self.create_dense_kernel = create_dense_cpp_kernel_in_python
         self.optimizer = None
@@ -53,14 +42,10 @@ class FacilityLocation(BaseFunction):
         self.master_set = None
         self.n_master = None
         
-        super().__init__()
-
-        # Validate inputs
         validate_n(self.n)
         validate_mode(self.mode)
         validate_sep_rep(self.separate_rep, self.mode, self.n_rep)
 
-        # Handle similarity kernel or data
         if self.sijs is not None:
             validate_sijs(type(self.sijs), self.mode, self.num_neighbors, self.separate_rep)
             if self.separate_rep == True:
@@ -72,7 +57,6 @@ class FacilityLocation(BaseFunction):
             if self.data is None:
                 raise Exception("ERROR: Data matrix not provided")
             
-            # Convert numpy array to torch tensor if needed
             if isinstance(self.data, np.ndarray):
                 self.data = torch.tensor(self.data, dtype=torch.float32)
             
@@ -83,11 +67,11 @@ class FacilityLocation(BaseFunction):
             else:
                 raise Exception("ERROR: Neither ground set data matrix nor similarity kernel provided")
         
-        # Initialize effective ground set and master set (like C++ version)
         self._initialize_ground_sets()
         
         # Initialize memoization
-        self._initialize_memoization()
+        """TODO: Commented for now, to be revisited later"""
+        # self._initialize_memoization()
 
     def _initialize_ground_sets(self):
         """Initialize effective ground set and master set like C++ version"""
@@ -280,8 +264,8 @@ if __name__ == "__main__":
     print(f"Gain of adding another point ({subset1[-1]}) of same cluster to {set1} = {obj1.marginalGain(set1, subset1[-1])}")
     print(f"Gain of adding another point ({subset2[-1]}) of different cluster to {set1} = {obj1.marginalGain(set1, subset2[-1])}")
     obj1.setMemoization(set1)
-    print(f"Subset 1's Fast FL value = {obj1.evalauteWithMemoization(set1)}")
-    print(f"Fast gain of adding another point ({subset1[-1]}) of same cluster to {set1} = {obj1.maginalGainWithMemoization(set1, subset1[-1])}")
+    print(f"Subset 1's Fast FL value = {obj1.evaluateWithMemoization(set1)}")
+    print(f"Fast gain of adding another point ({subset1[-1]}) of same cluster to {set1} = {obj1.marginalGainWithMemoization(set1, subset1[-1])}")
     #start = time.process_time()
     greedyList = obj1.maximize(budget=10,optimizer='NaiveGreedy', stopIfZeroGain=False, stopIfNegativeGain=False, verbose=False)
     #print(f"Time taken by maximization = {time.process_time() - start}")

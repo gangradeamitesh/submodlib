@@ -5,7 +5,8 @@ from .lazy_greedy import LazyGreedy
 from .constants import Constant
 
 class OptimizerFactory:
-    def get_optimizer(self , optimizer):
+    @staticmethod
+    def get_optimizer(optimizer):
         if optimizer==Constant.naive_greedy:
             return NaiveGreedy()
         elif optimizer==Constant.stocastic_greedy:

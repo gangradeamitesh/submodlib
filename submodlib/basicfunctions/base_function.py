@@ -2,16 +2,17 @@ from abc import ABC , abstractmethod
 
 class BaseFunction(ABC):
 
-    def __init__(self,n , mode="dense",sijs=None,data=None,num_clusters=None,cluster_label=None,metric="cosine") -> None:
+    def __init__(self,n , mode="dense",sijs=None,data=None,num_clusters=None,cluster_label=None,metric="cosine",cluster_labels=None) -> None:
         self.n = n
         self.mode = mode
         self.metric = metric
-        self.sijs = sijs
         self.data = data
         self.clusters = None
         self.cluster_sijs = None
         self.cluster_map = None
+        self.cluster_labels = cluster_labels
         self.num_clusters = num_clusters
+        self.sijs = sijs
         
 
     @abstractmethod
