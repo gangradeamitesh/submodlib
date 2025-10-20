@@ -33,7 +33,6 @@ class FacilityLocation(BaseFunction):
         self.ground_set = ground_set
         self.separate_master = separate_master
         
-        # Memoization variables (similar to C++ version)
         self.similarity_with_nearest_in_effective_x = None
         self.memoization_initialized = False
         

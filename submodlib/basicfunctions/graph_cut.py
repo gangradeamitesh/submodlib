@@ -1,6 +1,9 @@
 from pickle import NONE
 from base_function import BaseFunction
 from optimizers.optimizer_factory import OptimizerFactory
+import torch
+from userValidator import validate_n, validate_mode, validate_sep_rep , validate_sijs
+from cal_simi_kernel import DenseSimilarity
 class GraphCut(BaseFunction):
 
     def __init__(self, n, mode="dense", seperate_rep=None, n_rep=None, sijs=None, 
@@ -31,6 +34,29 @@ class GraphCut(BaseFunction):
         self.master_set = None
         self.n_master = None
         self._initialize_ground_sets()
+        validate_n(self.n)
+        validate_mode(self.mode)
+        validate_sep_rep(self.separate_rep, self.mode, self.n_rep)
+        if self.sijs is not None:
+            validate_sijs(type(self.sijs), self.mode, self.num_neighbors, self.separate_rep)
+            if self.separate_rep == True:
+                if self.data.shape[1] != self.data_rep.shape[1]:
+                    raise Exception("ERROR: Data and Representation have different dimensions")
+            if self.data is not None or self.data_rep is not None:
+                print("WARNING: similarity kernel found. Provided data matrix will be ignored.")
+        else:
+            if self.data is None:
+                raise Exception("ERROR: Data matrix not provided")
+            
+            if isinstance(self.data, np.ndarray):
+                self.data = torch.tensor(self.data, dtype=torch.float32)
+            
+            if self.create_dense_kernel == True and self.mode == "dense" and self.metric == "euclidean":
+                self.sijs = DenseSimilarity.euclidean_distance(self.data)
+            elif self.create_dense_kernel == True and self.mode == "dense" and self.metric == "cosine":
+                self.sijs = DenseSimilarity.cosine_similarity(self.data)
+            else:
+                raise Exception("ERROR: Neither ground set data matrix nor similarity kernel provided")
     
     def _initialize_ground_sets(self):
         """Initialize effective ground set and master set like C++ version"""
@@ -46,15 +72,39 @@ class GraphCut(BaseFunction):
         """Maximize the function using the optimizer"""
         optimizer_instance = OptimizerFactory.get_optimizer(optimizer)
         return optimizer_instance.optimize(self , budget , stopIfZeroGain , stopIfNegativeGain , epsilon , verbose , show_progress , costs , costSensitiveGreedy)
-        pass
     
     def marginalGain(self , X , element):
         """Compute the marginal gain of adding an element to the set"""
-        pass
+        if element in X:
+            return 0.0
+        if element not in self.effective_ground_set:
+            return 0.0
+        current_val = self.evaluate(X)
+        X_new = X | {element}
+        new_val = self.evaluate(X_new)
+        return new_val - current_val
     
     def evaluate(self , evaluate_set):
         """Evalaute the function on the given set"""
-        pass 
+        if not evaluate_set:
+            return 0.0
+        if self.partial:
+            effective_x = evaluate_set & self.effective_ground_set
+        else:
+            effective_x = evaluate_set
+        if not effective_x:
+            return 0.0
+        X_list = list(effective_x)
+        X_tensor = torch.tensor(X_list, dtype=torch.long)
+        effective_ground_tensor = torch.tensor(list(self.effective_ground_set), dtype=torch.long)
+        """f_{gc}(X) = \\sum_{i \\in V, j \\in X} s_{ij} - \\lambda \\sum_{i, j \\in X} s_{ij}"""
+        # representation_term = sum(self.sijs[i, j] for i in self.effective_ground_set for j in X_list)
+        # diversity_term = sum(self.sijs[i,j] for i in X_list for j in X_list)
+        representation_term = self.sijs[effective_ground_tensor][:,X_tensor].sum()
+        diversity_term = self.sijs[X_tensor][:,X_tensor].sum()
+        return 0.5 * representation_term - 1 * diversity_term
+
+
     
     def marginalGainWithMemoization(self , X , element):
         """Compute the marginal gain of adding an element to the set with memoization"""

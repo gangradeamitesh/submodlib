@@ -65,7 +65,6 @@ class NaiveGreedy(BaseOptimizer):
                     """TODO: This is a temporary fix to return gain along with element"""
                     output_pair = (element, gain) 
             
-            # Check stopping conditions
             if best_element is None:
                 if verbose:
                     print("No more elements to select")
