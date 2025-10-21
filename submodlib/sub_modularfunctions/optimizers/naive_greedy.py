@@ -54,10 +54,10 @@ class NaiveGreedy(BaseOptimizer):
                 
                 """TODO: This is commented memoization code, to be revisited later"""
                 # Use memoized marginal gain if available
-                # if hasattr(function, 'marginalGainWithMemoization'):
-                #     gain = function.marginalGainWithMemoization(selected, element)
-                # else:
-                gain = function.marginalGain(selected, element)
+                if hasattr(function, 'marginalGainWithMemoization'):
+                    gain = function.marginalGainWithMemoization(selected, element)
+                else:
+                    gain = function.marginalGain(selected, element)
                 
                 if gain > best_gain:
                     best_gain = gain
@@ -83,15 +83,15 @@ class NaiveGreedy(BaseOptimizer):
             selected.add(best_element)
             selected_pairs.add(output_pair)
             """TODO: This is commented memoization code, to be revisited later"""
-            # if hasattr(function, 'updateMemoization'):
-            #     function.updateMemoization(selected, best_element)
+            if hasattr(function, 'updateMemoization'):
+                function.updateMemoization(selected, best_element)
             
-            # if verbose:
-            #     current_value = function.evaluateWithMemoization(selected) if hasattr(function, 'evaluateWithMemoization') else function.evaluate(selected)
-            #     print(f"Selected element {best_element} with gain {best_gain:.4f}, current value: {current_value:.4f}")
+            if verbose:
+                current_value = function.evaluateWithMemoization(selected) if hasattr(function, 'evaluateWithMemoization') else function.evaluate(selected)
+                print(f"Selected element {best_element} with gain {best_gain:.4f}, current value: {current_value:.4f}")
         
-        # if verbose:
-        #     final_value = function.evaluateWithMemoization(selected) if hasattr(function, 'evaluateWithMemoization') else function.evaluate(selected)
-        #     print(f"Optimization complete. Selected {len(selected)} elements with final value: {final_value:.4f}")
+        if verbose:
+            final_value = function.evaluateWithMemoization(selected) if hasattr(function, 'evaluateWithMemoization') else function.evaluate(selected)
+            print(f"Optimization complete. Selected {len(selected)} elements with final value: {final_value:.4f}")
         
         return list(selected_pairs)

@@ -1,9 +1,12 @@
-from submodlib.sub_modularfunctions.userValidator import validate_n, validate_mode, validate_sep_rep, validate_sijs
 import torch
+import torch.nn.functional as F
 import numpy as np
-from submodlib.sub_modularfunctions.cal_simi_kernel import DenseSimilarity
-from submodlib.sub_modularfunctions.base_function import BaseFunction
-from submodlib.sub_modularfunctions.optimizers.optimizer_factory import OptimizerFactory
+
+# Relative imports within the same package
+from ..userValidator import validate_n, validate_mode, validate_sep_rep, validate_sijs
+from ..cal_simi_kernel import DenseSimilarity
+from ..base_function import BaseFunction
+from ..optimizers.optimizer_factory import OptimizerFactory
 
 class FacilityLocation(BaseFunction):
     """
@@ -60,9 +63,11 @@ class FacilityLocation(BaseFunction):
                 self.data = torch.tensor(self.data, dtype=torch.float32)
             
             if self.create_dense_kernel == True and self.mode == "dense" and self.metric == "euclidean":
-                self.sijs = DenseSimilarity.euclidean_distance(self.data,self.data)
+                self.sijs = DenseSimilarity.euclidean_distance(self.data, self.data)
+                print("SIJS")
+                print(self.sijs)
             elif self.create_dense_kernel == True and self.mode == "dense" and self.metric == "cosine":
-                self.sijs = DenseSimilarity.cosine_similarity(self.data,self.data)
+                self.sijs = DenseSimilarity.cosine_similarity(self.data, self.data)
             else:
                 raise Exception("ERROR: Neither ground set data matrix nor similarity kernel provided")
         
@@ -70,7 +75,7 @@ class FacilityLocation(BaseFunction):
         
         # Initialize memoization
         """TODO: Commented for now, to be revisited later"""
-        # self._initialize_memoization()
+        self._initialize_memoization()
 
     def _initialize_ground_sets(self):
         """Initialize effective ground set and master set like C++ version"""
@@ -185,19 +190,24 @@ class FacilityLocation(BaseFunction):
 
     def updateMemoization(self, X, element):
         """
-        Update memoization after adding element to set X.
+        Update memoization for the given set X.
         This is called after each greedy selection.
         """
         if not self.memoization_initialized:
             return
         
-        element_tensor = torch.tensor(element, dtype=torch.long)
+        # Clear current memoization
+        self.clearMemoization()
         
-        # Update best similarities for all master items
-        for master_idx in range(self.n_master):
-            new_similarity = self.sijs[master_idx, element_tensor].item()
-            if new_similarity > self.similarity_with_nearest_in_effective_x[master_idx]:
-                self.similarity_with_nearest_in_effective_x[master_idx] = new_similarity
+        # Update memoization for each element in X
+        for element in X:
+            element_tensor = torch.tensor(element, dtype=torch.long)
+            
+            # Update best similarities for all master items
+            for master_idx in range(self.n_master):
+                new_similarity = self.sijs[master_idx, element_tensor].item()
+                if new_similarity > self.similarity_with_nearest_in_effective_x[master_idx]:
+                    self.similarity_with_nearest_in_effective_x[master_idx] = new_similarity
 
     def clearMemoization(self):
         """Clear all memoization data"""
@@ -209,14 +219,16 @@ class FacilityLocation(BaseFunction):
         Set memoization for a given set X.
         This initializes memoization as if X was the current set.
         """
+        if not self.memoization_initialized:
+            return
+        
         self.clearMemoization()
         
         if not X:
             return
         
-        # Update memoization for each element in X
-        for element in X:
-            self.updateMemoization(set(), element)
+        # Update memoization for the entire set X
+        self.updateMemoization(X)
 
     def getEffectiveGroundSet(self):
         """
@@ -228,43 +240,46 @@ class FacilityLocation(BaseFunction):
 
 if __name__ == "__main__":
     print("Testing Facility Location Implementation")
-    from sklearn.datasets import make_blobs
-    import random
-    num_clusters = 10
-    cluster_std_dev = 4
-    points, cluster_ids, centers = make_blobs(n_samples=500, centers=num_clusters, 
-                                            n_features=2, cluster_std=cluster_std_dev, center_box=(0,100), 
-                                            return_centers=True, random_state=4)
-    data = list(map(tuple, points))
-    xs = [x[0] for x in data]
-    ys = [x[1] for x in data]
-    import numpy as np
-    dataArray = np.array(data)
-    random.seed(1)
-    cluster1Indices = [index for index, val in enumerate(cluster_ids) if val == 1]
-    subset1 = random.sample(cluster1Indices, 6)
-    subset1xs = [xs[x] for x in subset1]
-    subset1ys = [ys[x] for x in subset1]
-    set1 = set(subset1[:-1])
-    subset2 = []
-    for i in range(6):
-        #find the index of first point that belongs to cluster i
-        diverse_index = cluster_ids.tolist().index(i)
-        subset2.append(diverse_index)
-    subset2xs = [xs[x] for x in subset2]
-    subset2ys = [ys[x] for x in subset2]
-    set2 = set(subset2[:-1])
-    obj1 = FacilityLocation(n=500, mode="dense", data=dataArray, metric="euclidean")
-    print(f"Subset 1's FL value = {obj1.evaluate(set1)}")
-    print(f"Subset 2's FL value = {obj1.evaluate(set2)}")
-    print(f"Gain of adding another point ({subset1[-1]}) of same cluster to {set1} = {obj1.marginalGain(set1, subset1[-1])}")
-    print(f"Gain of adding another point ({subset2[-1]}) of different cluster to {set1} = {obj1.marginalGain(set1, subset2[-1])}")
-    obj1.setMemoization(set1)
-    print(f"Subset 1's Fast FL value = {obj1.evaluateWithMemoization(set1)}")
-    print(f"Fast gain of adding another point ({subset1[-1]}) of same cluster to {set1} = {obj1.marginalGainWithMemoization(set1, subset1[-1])}")
-    #start = time.process_time()
-    greedyList = obj1.maximize(budget=10,optimizer='NaiveGreedy', stopIfZeroGain=False, stopIfNegativeGain=False, verbose=False)
-    #print(f"Time taken by maximization = {time.process_time() - start}")
-    print(f"Greedy vector: {greedyList}")
-    greedyXs = [xs[x[0]] for x in greedyList]
-    greedyYs = [ys[x[0]] for x in greedyList]
+    # from sklearn.datasets import make_blobs
+    # import random
+    # num_clusters = 10
+    # cluster_std_dev = 4
+    # points, cluster_ids, centers = make_blobs(n_samples=500, centers=num_clusters, 
+    #                                         n_features=2, cluster_std=cluster_std_dev, center_box=(0,100), 
+    #                                         return_centers=True, random_state=4)
+    # data = list(map(tuple, points))
+    # xs = [x[0] for x in data]
+    # ys = [x[1] for x in data]
+    # import numpy as np
+    # dataArray = np.array(data)
+    # random.seed(1)
+    # cluster1Indices = [index for index, val in enumerate(cluster_ids) if val == 1]
+    # subset1 = random.sample(cluster1Indices, 6)
+    # subset1xs = [xs[x] for x in subset1]
+    # subset1ys = [ys[x] for x in subset1]
+    # set1 = set(subset1[:-1])
+    # subset2 = []
+    # for i in range(6):
+    #     #find the index of first point that belongs to cluster i
+    #     diverse_index = cluster_ids.tolist().index(i)
+    #     subset2.append(diverse_index)
+    # subset2xs = [xs[x] for x in subset2]
+    # subset2ys = [ys[x] for x in subset2]
+    # set2 = set(subset2[:-1])
+    # obj1 = FacilityLocation(n=500, mode="dense", data=dataArray, metric="euclidean")
+    # print(f"Subset 1's FL value = {obj1.evaluate(set1)}")
+    # print(f"Subset 2's FL value = {obj1.evaluate(set2)}")
+    # print(f"Gain of adding another point ({subset1[-1]}) of same cluster to {set1} = {obj1.marginalGain(set1, subset1[-1])}")
+    # print(f"Gain of adding another point ({subset2[-1]}) of different cluster to {set1} = {obj1.marginalGain(set1, subset2[-1])}")
+    # obj1.setMemoization(set1)
+    # print(f"Subset 1's Fast FL value = {obj1.evaluateWithMemoization(set1)}")
+    # print(f"Fast gain of adding another point ({subset1[-1]}) of same cluster to {set1} = {obj1.marginalGainWithMemoization(set1, subset1[-1])}")
+    # #start = time.process_time()
+    # greedyList = obj1.maximize(budget=10,optimizer='NaiveGreedy', stopIfZeroGain=False, stopIfNegativeGain=False, verbose=False)
+    # #print(f"Time taken by maximization = {time.process_time() - start}")
+    # print(f"Greedy vector: {greedyList}")
+    # greedyXs = [xs[x[0]] for x in greedyList]
+    # greedyYs = [ys[x[0]] for x in greedyList]
+    # Test with 2D data (required for similarity calculations)
+    
+    

@@ -32,4 +32,5 @@ def validate_sijs(sijs_data_type, mode , num_neighbors , separate_rep):
             raise Exception("ERROR: Dense kernel provided, but mode is not dense")
     else:
         raise Exception("Invalid kernel provided")
-def validate_data_sijs()
+def validate_data_sijs():
+    pass
