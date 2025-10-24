@@ -64,8 +64,7 @@ class FacilityLocation(BaseFunction):
             
             if self.create_dense_kernel == True and self.mode == "dense" and self.metric == "euclidean":
                 self.sijs = DenseSimilarity.euclidean_distance(self.data, self.data)
-                print("SIJS")
-                print(self.sijs)
+                
             elif self.create_dense_kernel == True and self.mode == "dense" and self.metric == "cosine":
                 self.sijs = DenseSimilarity.cosine_similarity(self.data, self.data)
             else:
@@ -168,14 +167,16 @@ class FacilityLocation(BaseFunction):
         
         gain = 0.0
         element_tensor = torch.tensor(element, dtype=torch.long)
-        
-        for master_idx in range(self.n_master):
-            current_best = self.similarity_with_nearest_in_effective_x[master_idx]
-            new_similarity = self.sijs[master_idx, element_tensor].item()
+        #print(self.similarity_with_nearest_in_effective_x)
+        # for master_idx in range(self.n_master):
+        #     current_best = self.similarity_with_nearest_in_effective_x[master_idx]
+        #     new_similarity = self.sijs[master_idx, element_tensor].item()
             
-            if new_similarity > current_best:
-                gain += (new_similarity - current_best)
-        
+        #     if new_similarity > current_best:
+        #         gain += (new_similarity - current_best)
+        new_similarities = self.sijs[:, element_tensor]
+        gain_tensor = torch.maximum(new_similarities - self.similarity_with_nearest_in_effective_x, torch.tensor(0.0))
+        gain = torch.sum(gain_tensor).item()
         return gain
 
     def evaluateWithMemoization(self, evaluate_set):
@@ -193,21 +194,25 @@ class FacilityLocation(BaseFunction):
         Update memoization for the given set X.
         This is called after each greedy selection.
         """
-        if not self.memoization_initialized:
+        if not self.memoization_initialized or element in X:
             return
         
         # Clear current memoization
-        self.clearMemoization()
+        #self.clearMemoization()
         
         # Update memoization for each element in X
-        for element in X:
-            element_tensor = torch.tensor(element, dtype=torch.long)
+        # for element in X:
+        #     element_tensor = torch.tensor(element, dtype=torch.long)
             
-            # Update best similarities for all master items
-            for master_idx in range(self.n_master):
-                new_similarity = self.sijs[master_idx, element_tensor].item()
-                if new_similarity > self.similarity_with_nearest_in_effective_x[master_idx]:
-                    self.similarity_with_nearest_in_effective_x[master_idx] = new_similarity
+        #     # Update best similarities for all master items
+        #     for master_idx in range(self.n_master):
+        #         new_similarity = self.sijs[master_idx, element_tensor].item()
+        #         if new_similarity > self.similarity_with_nearest_in_effective_x[master_idx]:
+        #             self.similarity_with_nearest_in_effective_x[master_idx] = new_similarity
+        element_tensor = torch.tensor(element, dtype=torch.long)
+        new_similarity = self.sijs[:, element_tensor]
+        torch.maximum(new_similarity, self.similarity_with_nearest_in_effective_x, out=self.similarity_with_nearest_in_effective_x)
+        
 
     def clearMemoization(self):
         """Clear all memoization data"""
@@ -224,11 +229,16 @@ class FacilityLocation(BaseFunction):
         
         self.clearMemoization()
         
-        if not X:
-            return
+        # if not X:
+        #     return
+        # element_tensors = torch.tensor(list(X), dtype=torch.long)
+        # new_similarities = self.sijs[:, element_tensors]
+        # self.similarity_with_nearest_in_effective_x, _ = torch.max(self.similarity_with_nearest_in_effective_x ,new_similarities)
+        running = set()
+        for ele in X:
+            self.updateMemoization(running , ele)
+            running.add(ele)
         
-        # Update memoization for the entire set X
-        self.updateMemoization(X)
 
     def getEffectiveGroundSet(self):
         """

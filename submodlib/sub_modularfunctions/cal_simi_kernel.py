@@ -15,7 +15,7 @@ class DenseSimilarity:
         return sim
     
     @staticmethod
-    def cosine_similarity(data,candidate_data):
-        """Compute the pairwise cosine similarity between data points."""
-        data = F.normalize(data, p=2, dim=1)
-        return torch.matmul(data, candidate_data.T)
+    def cosine_similarity(ground_set, candidate):
+        ground_norm = F.normalize(ground_set, p=2, dim=1)
+        candidate_norm = F.normalize(candidate, p=2, dim=1)
+        return torch.matmul(ground_norm , candidate_norm.T)

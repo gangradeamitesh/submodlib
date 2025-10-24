@@ -80,12 +80,12 @@ class NaiveGreedy(BaseOptimizer):
                     print(f"Stopping: marginal gain is {best_gain} (negative)")
                 break
             
-            selected.add(best_element)
-            selected_pairs.add(output_pair)
+
             """TODO: This is commented memoization code, to be revisited later"""
             if hasattr(function, 'updateMemoization'):
-                function.updateMemoization(selected, best_element)
-            
+                function.updateMemoization(selected , best_element)
+            selected.add(best_element)
+            selected_pairs.add(output_pair)
             if verbose:
                 current_value = function.evaluateWithMemoization(selected) if hasattr(function, 'evaluateWithMemoization') else function.evaluate(selected)
                 print(f"Selected element {best_element} with gain {best_gain:.4f}, current value: {current_value:.4f}")
