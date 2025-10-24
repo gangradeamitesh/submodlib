@@ -9,9 +9,10 @@ class DenseSimilarity:
 
     @staticmethod
     def euclidean_distance(data, candidate_data , sigma=1.0):
-        """Compute the pairwise Euclidean distance between data points."""
-        dist = torch.cdist(data, candidate_data, p=2)**2
-        sim = torch.exp(-dist / (2 * sigma ** 2))
+        dist = torch.cdist(data, candidate_data, p=2)
+        feature_dim = data.size(-1)
+        gamma = 1.0 / feature_dim
+        sim = torch.exp(-dist * gamma)
         return sim
     
     @staticmethod
