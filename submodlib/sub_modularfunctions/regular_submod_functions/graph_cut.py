@@ -4,39 +4,36 @@ from submodlib.sub_modularfunctions.optimizers.optimizer_factory import Optimize
 import torch
 from submodlib.sub_modularfunctions.userValidator import validate_n, validate_mode, validate_sep_rep , validate_sijs
 from submodlib.sub_modularfunctions.cal_simi_kernel import DenseSimilarity
+from submodlib import GraphCutFunction
 
 """TODO: To implement the lambda functionlity for graph cut"""
 class GraphCut(BaseFunction):
 
-    def __init__(self, n, mode="dense", seperate_rep=None, n_rep=None, sijs=None, 
-                 data=None, data_rep=None, num_clusters=None, cluster_labels=None, 
-                 metric="cosine", num_neighbors=None, create_dense_cpp_kernel_in_python=True, 
-                ground_set=None) -> None:    
-        super().__init__(n=n, mode=mode, sijs=sijs, data=data,cluster_label=cluster_labels , num_clusters=num_clusters, metric=metric)
-        self.n_rep = n_rep
+    def __init__(self, n, mode="dense",lambda_val=0.1,mgsijs=None,ggsijs=None,data=None,
+                 metric="cosine") -> None:    
+        super().__init__(n=n, mode=mode,metric=metric , sijs=ggsijs, data=data)
+
+        self.lambda_val = lambda_val
         
-        self.data_rep = data_rep
-        self.num_neighbors = num_neighbors
-        self.separate_rep = seperate_rep
         self.effective_ground = None
-        self.create_dense_kernel = create_dense_cpp_kernel_in_python
+        
         self.optimizer = None
-        
-        # New parameters for proper ground set handling
-        self.ground_set = ground_set
-        
+                
         # Memoization variables (similar to C++ version)
         self.similarity_with_nearest_in_effective_x = None
         self.memoization_initialized = False
         
-        # Effective ground set - this is what getEffectiveGroundSet() should return
+        
         self.effective_ground_set = None
-        self.master_set = None
-        self.n_master = None
         self._initialize_ground_sets()
         validate_n(self.n)
         validate_mode(self.mode)
-        validate_sep_rep(self.separate_rep, self.mode, self.n_rep)
+        if self.n <= 0:
+            raise Exception("ERROR: Number of elements in ground set must be positive")
+
+        if self.mode not in ['dense', 'sparse']:
+                raise Exception("ERROR: Incorrect mode. Must be one of 'dense' or 'sparse'")
+        
         if self.sijs is not None:
             validate_sijs(type(self.sijs), self.mode, self.num_neighbors, self.separate_rep)
             if self.separate_rep == True:
@@ -51,16 +48,21 @@ class GraphCut(BaseFunction):
             if isinstance(self.data, np.ndarray):
                 self.data = torch.tensor(self.data, dtype=torch.float32)
             
-            if self.create_dense_kernel == True and self.mode == "dense" and self.metric == "euclidean":
+            if self.mode == "dense" and self.metric == "euclidean":
                 self.sijs = DenseSimilarity.euclidean_distance(self.data,self.data)
-            elif self.create_dense_kernel == True and self.mode == "dense" and self.metric == "cosine":
+            elif  self.mode == "dense" and self.metric == "cosine":
                 self.sijs = DenseSimilarity.cosine_similarity(self.data,self.data)
             else:
                 raise Exception("ERROR: Neither ground set data matrix nor similarity kernel provided")
-    
+        self._initialize_memoization()
+    def _initialize_memoization(self):
+        """Initialize memoization structures"""
+        
+        self.similarity_with_nearest_in_effective_x = self._tensor(torch.zeros(self.n, dtype=torch.float32))
+        self.memoization_initialized = True
     def _initialize_ground_sets(self):
         """Initialize effective ground set and master set like C++ version"""
-        self.effective_ground_set = set(range(self.n))
+        self.effective_ground_set = self._tensor(torch.arange(self.n), dtype=torch.long)
     
     def maximize(self, optimizer, budget, stopIfZeroGain=False, stopIfNegativeGain=False, epsilon=None, 
                  verbose=False, show_progress=True, costs=None, costSensitiveGreedy=False):
@@ -86,39 +88,62 @@ class GraphCut(BaseFunction):
         
         X_list = list(evaluate_set)
         X_tensor = torch.tensor(X_list, dtype=torch.long)
-        effective_ground_tensor = torch.tensor(list(self.effective_ground_set), dtype=torch.long)
-        representation_term = self.sijs[effective_ground_tensor][:,X_tensor].sum()
-        diversity_term = self.sijs[X_tensor][:,X_tensor].sum()
-        return 0.5 * representation_term - 1 * diversity_term
+        effective_ground_tensor = self.getEffectiveGroundSet()
+        representation_term = self.sijs[:,X_tensor].sum()
+        diversity_term = self.sijs[X_tensor][: ,X_tensor].sum()
+        return representation_term - self.lambda_val * diversity_term
 
 
     
     def marginalGainWithMemoization(self , X , element):
         """Compute the marginal gain of adding an element to the set with memoization"""
-        pass
+        if element in X:
+            return 0.0
+        if element not in self.effective_ground_set:
+            return 0.0
+        
+        # Compute the gain using memoization
+        new_similarities = self.sijs[:, element]
+        gain_tensor = torch.maximum(new_similarities - self.similarity_with_nearest_in_effective_x, torch.tensor(0.0))
+        gain = torch.sum(gain_tensor).item()
+        return gain
     
     def evaluateWithMemoization(self , evaluate_set):
         """Evaluate the function on the given set with memoization"""
-        pass
+        if not self.memoization_initialized:
+            return self.evaluate(evaluate_set)
+        
+        return torch.sum(self.similarity_with_nearest_in_effective_x).item()
     
-    def updateMemoization(self , X):
+    def updateMemoization(self , X, element):
         """Update the memoization for the given set"""
-        pass
+        if not self.memoization_initialized or element in X:
+            return
+        element_tensor = self._tensor(element, dtype=torch.long)
+        new_similarity = self.sijs[:, element_tensor]
+        torch.maximum(new_similarity, self.similarity_with_nearest_in_effective_x, out=self.similarity_with_nearest_in_effective_x)
     
     def clearMemoization(self):
         """Clear the memoization"""
-        pass
+        if self.memoization_initialized:
+            self.similarity_with_nearest_in_effective_x.zero_()
     
     def setMemoization(self , X):
         """Set the memoization for the given set"""
-        pass
+        if not self.memoization_initialized:
+            return
+        
+        self.clearMemoization()
+        running = set()
+        for ele in X:
+            self.updateMemoization(running , ele)
+            running.add(ele)
     
     def getEffectiveGroundSet(self):
         """Get the effective ground set"""
-        return self.effective_ground_set.copy()
+        return self.effective_ground_set
 
 if __name__ == "__main__":
-    print("Testing Facility Location Implementation")
     from sklearn.datasets import make_blobs
     import random
     num_clusters = 10
@@ -154,6 +179,49 @@ if __name__ == "__main__":
     obj1.setMemoization(set1)
     print(f"Subset 1's Fast FL value = {obj1.evaluateWithMemoization(set1)}")
     print(f"Fast gain of adding another point ({subset1[-1]}) of same cluster to {set1} = {obj1.marginalGainWithMemoization(set1, subset1[-1])}")
+    #start = time.process_time()
+    greedyList = obj1.maximize(budget=10,optimizer='NaiveGreedy', stopIfZeroGain=False, stopIfNegativeGain=False, verbose=False)
+    #print(f"Time taken by maximization = {time.process_time() - start}")
+
+    print(f"Greedy vector: {sorted(greedyList , key= lambda x: x[1], reverse=True)}")
+    greedyXs = [xs[x[0]] for x in greedyList]
+    greedyYs = [ys[x[0]] for x in greedyList]
+    print("--------------------------------------------------------------------------------")
+    from sklearn.datasets import make_blobs
+    import random
+    num_clusters = 10
+    cluster_std_dev = 4
+    points, cluster_ids, centers = make_blobs(n_samples=500, centers=num_clusters, 
+                                            n_features=2, cluster_std=cluster_std_dev, center_box=(0,100), 
+                                            return_centers=True, random_state=4)
+    data = list(map(tuple, points))
+    xs = [x[0] for x in data]
+    ys = [x[1] for x in data]
+    import numpy as np
+    dataArray = np.array(data)
+    random.seed(1)
+    cluster1Indices = [index for index, val in enumerate(cluster_ids) if val == 1]
+    subset1 = random.sample(cluster1Indices, 6)
+    subset1xs = [xs[x] for x in subset1]
+    subset1ys = [ys[x] for x in subset1]
+    set1 = set(subset1[:-1])
+    subset2 = []
+    for i in range(6):
+        #find the index of first point that belongs to cluster i
+        diverse_index = cluster_ids.tolist().index(i)
+        subset2.append(diverse_index)
+    subset2xs = [xs[x] for x in subset2]
+    subset2ys = [ys[x] for x in subset2]
+    set2 = set(subset2[:-1])
+    obj1 = GraphCutFunction(n=500, mode="dense", data=dataArray, metric="euclidean",lambdaVal=0.1)
+    obj1.maximize(budget=1, optimizer='NaiveGreedy', stopIfZeroGain=False, stopIfNegativeGain=False, verbose=False)
+    print(f"Subset 1's FL value = {obj1.evaluate(set1)}")
+    print(f"Subset 2's FL value = {obj1.evaluate(set2)}")
+    print(f"Gain of adding another point ({subset1[-1]}) of same cluster to {set1} = {obj1.marginalGain(set1, subset1[-1])}")
+    print(f"Gain of adding another point ({subset2[-1]}) of different cluster to {set1} = {obj1.marginalGain(set1, subset2[-1])}")
+    obj1.setMemoization(set1)
+    print(f"Subset 1's Fast FL value = {obj1.evaluateWithMemoization(set1)}")
+    #print(f"Fast gain of adding another point ({subset1[-1]}) of same cluster to {set1} = {obj1.marginalGainWithMemoization(set1, subset1[-1])}")
     #start = time.process_time()
     greedyList = obj1.maximize(budget=10,optimizer='NaiveGreedy', stopIfZeroGain=False, stopIfNegativeGain=False, verbose=False)
     #print(f"Time taken by maximization = {time.process_time() - start}")
