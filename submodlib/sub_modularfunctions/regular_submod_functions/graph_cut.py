@@ -11,7 +11,7 @@ class GraphCut(BaseFunction):
     def __init__(self, n, mode="dense", seperate_rep=None, n_rep=None, sijs=None, 
                  data=None, data_rep=None, num_clusters=None, cluster_labels=None, 
                  metric="cosine", num_neighbors=None, create_dense_cpp_kernel_in_python=True, 
-                 pybind_mode=None, partial=False, ground_set=None, separate_master=False ) -> None:    
+                ground_set=None) -> None:    
         super().__init__(n=n, mode=mode, sijs=sijs, data=data,cluster_label=cluster_labels , num_clusters=num_clusters, metric=metric)
         self.n_rep = n_rep
         
@@ -23,9 +23,7 @@ class GraphCut(BaseFunction):
         self.optimizer = None
         
         # New parameters for proper ground set handling
-        self.partial = partial
         self.ground_set = ground_set
-        self.separate_master = separate_master
         
         # Memoization variables (similar to C++ version)
         self.similarity_with_nearest_in_effective_x = None
@@ -62,12 +60,7 @@ class GraphCut(BaseFunction):
     
     def _initialize_ground_sets(self):
         """Initialize effective ground set and master set like C++ version"""
-        if self.partial and self.ground_set is not None:
-            # Use provided ground set (partial mode)
-            self.effective_ground_set = set(self.ground_set)
-        else:
-            # Create ground set with items 0 to n-1 (like C++ lines 28-32)
-            self.effective_ground_set = set(range(self.n))
+        self.effective_ground_set = set(range(self.n))
     
     def maximize(self, optimizer, budget, stopIfZeroGain=False, stopIfNegativeGain=False, epsilon=None, 
                  verbose=False, show_progress=True, costs=None, costSensitiveGreedy=False):
@@ -90,18 +83,10 @@ class GraphCut(BaseFunction):
         """Evalaute the function on the given set"""
         if not evaluate_set:
             return 0.0
-        if self.partial:
-            effective_x = evaluate_set & self.effective_ground_set
-        else:
-            effective_x = evaluate_set
-        if not effective_x:
-            return 0.0
-        X_list = list(effective_x)
+        
+        X_list = list(evaluate_set)
         X_tensor = torch.tensor(X_list, dtype=torch.long)
         effective_ground_tensor = torch.tensor(list(self.effective_ground_set), dtype=torch.long)
-        """f_{gc}(X) = \\sum_{i \\in V, j \\in X} s_{ij} - \\lambda \\sum_{i, j \\in X} s_{ij}"""
-        # representation_term = sum(self.sijs[i, j] for i in self.effective_ground_set for j in X_list)
-        # diversity_term = sum(self.sijs[i,j] for i in X_list for j in X_list)
         representation_term = self.sijs[effective_ground_tensor][:,X_tensor].sum()
         diversity_term = self.sijs[X_tensor][:,X_tensor].sum()
         return 0.5 * representation_term - 1 * diversity_term

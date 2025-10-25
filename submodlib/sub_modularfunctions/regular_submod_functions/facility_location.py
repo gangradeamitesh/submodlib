@@ -15,94 +15,59 @@ class FacilityLocation(BaseFunction):
     The function value for a set X is: sum over all master items of their maximum similarity to any item in X.
     """
 
-    def __init__(self, n, mode="dense", seperate_rep=None, n_rep=None, sijs=None, 
-                 data=None, data_rep=None, num_clusters=None, cluster_labels=None, 
-                 metric="cosine", num_neighbors=None, create_dense_cpp_kernel_in_python=True, 
-                 pybind_mode=None, partial=False, ground_set=None, separate_master=False):
+    def __init__(self, n, mode="dense", sijs=None, 
+                 data=None, data_rep=None, num_clusters=None, cluster_labels=None, metric="cosine", ground_set=None,device='cpu'):
         
-        super().__init__(n=n, mode=mode, sijs=sijs, data=data,cluster_label=cluster_labels , num_clusters=num_clusters, metric=metric)
-
-        self.n_rep = n_rep
-        
+        super().__init__(n=n, mode=mode, sijs=sijs, data=data,cluster_label=cluster_labels , num_clusters=num_clusters, metric=metric,device=device)
         self.data_rep = data_rep
-        self.num_neighbors = num_neighbors
-        self.separate_rep = seperate_rep
         self.effective_ground = None
-        self.create_dense_kernel = create_dense_cpp_kernel_in_python
         self.optimizer = None
         
-        # New parameters for proper ground set handling
-        self.partial = partial
-        self.ground_set = ground_set
-        self.separate_master = separate_master
-        
+        self.ground_set = ground_set        
         self.similarity_with_nearest_in_effective_x = None
         self.memoization_initialized = False
-        
-        # Effective ground set - this is what getEffectiveGroundSet() should return
         self.effective_ground_set = None
         self.master_set = None
         self.n_master = None
         
         validate_n(self.n)
         validate_mode(self.mode)
-        validate_sep_rep(self.separate_rep, self.mode, self.n_rep)
+        #validate_sep_rep(self.mode, self.n_rep)
 
         if self.sijs is not None:
-            validate_sijs(type(self.sijs), self.mode, self.num_neighbors, self.separate_rep)
-            if self.separate_rep == True:
-                if self.data.shape[1] != self.data_rep.shape[1]:
-                    raise Exception("ERROR: Data and Representation have different dimensions")
-            if self.data is not None or self.data_rep is not None:
-                print("WARNING: similarity kernel found. Provided data matrix will be ignored.")
+            validate_sijs(type(self.sijs), self.mode)
+            #if self.separate_rep == True:
+            #    if self.data.shape[1] != self.data_rep.shape[1]:
+            #        raise Exception("ERROR: Data and Representation have different dimensions")
+            #if self.data is not None or self.data_rep is not None:
+            #    print("WARNING: similarity kernel found. Provided data matrix will be ignored.")
         else:
             if self.data is None:
                 raise Exception("ERROR: Data matrix not provided")
             
             if isinstance(self.data, np.ndarray):
-                self.data = torch.tensor(self.data, dtype=torch.float32)
+                self.data = self._tensor(self.data, dtype=torch.float32)
             
-            if self.create_dense_kernel == True and self.mode == "dense" and self.metric == "euclidean":
+            if self.mode == "dense" and self.metric == "euclidean":
                 self.sijs = DenseSimilarity.euclidean_distance(self.data, self.data)
                 
-            elif self.create_dense_kernel == True and self.mode == "dense" and self.metric == "cosine":
+            elif self.mode == "dense" and self.metric == "cosine":
                 self.sijs = DenseSimilarity.cosine_similarity(self.data, self.data)
             else:
                 raise Exception("ERROR: Neither ground set data matrix nor similarity kernel provided")
         
         self._initialize_ground_sets()
-        
-        # Initialize memoization
-        """TODO: Commented for now, to be revisited later"""
         self._initialize_memoization()
 
     def _initialize_ground_sets(self):
-        """Initialize effective ground set and master set like C++ version"""
-        if self.partial and self.ground_set is not None:
-            # Use provided ground set (partial mode)
-            self.effective_ground_set = set(self.ground_set)
-        else:
-            # Create ground set with items 0 to n-1 (like C++ lines 28-32)
-            self.effective_ground_set = set(range(self.n))
-        
-        # Determine master set
-        if self.separate_master:
-            # Master set is separate from ground set
-            if self.sijs is not None:
-                self.n_master = self.sijs.shape[0]
-                self.master_set = set(range(self.n_master))
-            else:
-                raise Exception("ERROR: separate_master=True requires similarity kernel")
-        else:
-            # Master set is same as effective ground set (like C++ lines 88-90)
-            self.n_master = len(self.effective_ground_set)
-            self.master_set = self.effective_ground_set.copy()
+        self.effective_ground_set = self._tensor(torch.arange(self.n), dtype=torch.long)
+        #self.n_master = len(self.effective_ground_set)
 
     def _initialize_memoization(self):
         """Initialize memoization structures"""
-        if self.sijs is not None and self.n_master is not None:
-            self.similarity_with_nearest_in_effective_x = torch.zeros(self.n_master, dtype=torch.float32)
-            self.memoization_initialized = True
+        
+        self.similarity_with_nearest_in_effective_x = self._tensor(torch.zeros(self.n, dtype=torch.float32))
+        self.memoization_initialized = True
 
     def maximize(self, optimizer, budget, stopIfZeroGain=False, stopIfNegativeGain=False, epsilon=None, 
                  verbose=False, show_progress=True, costs=None, costSensitiveGreedy=False):
@@ -113,26 +78,11 @@ class FacilityLocation(BaseFunction):
     def evaluate(self, evaluate_set):
         if not evaluate_set:
             return 0.0
-        
-
-        if self.partial:
-            effective_x = evaluate_set & self.effective_ground_set
-        else:
-            effective_x = evaluate_set
-        
-        if not effective_x:
-            return 0.0
-        
-        X_list = list(effective_x)
-        X_tensor = torch.tensor(X_list, dtype=torch.long)
-        
-        similarity_scores = self.sijs[:, X_tensor]  # Shape: [n_master, |X|]
-        
-
-        max_similarities = torch.max(similarity_scores, dim=1)[0]  # Shape: [n_master]
-        
+        X_list = list(evaluate_set)
+        X_tensor = self._tensor(torch.tensor(X_list, dtype=torch.long))
+        max_similarities = torch.max(self.sijs[:, X_tensor], dim=1)[0]  # Shape: [n_master]
         return torch.sum(max_similarities).item()
-
+    
     def marginalGain(self, X, element):
         """
         Compute marginal gain of adding element to set X.
@@ -166,14 +116,7 @@ class FacilityLocation(BaseFunction):
             return self.marginalGain(X, element)
         
         gain = 0.0
-        element_tensor = torch.tensor(element, dtype=torch.long)
-        #print(self.similarity_with_nearest_in_effective_x)
-        # for master_idx in range(self.n_master):
-        #     current_best = self.similarity_with_nearest_in_effective_x[master_idx]
-        #     new_similarity = self.sijs[master_idx, element_tensor].item()
-            
-        #     if new_similarity > current_best:
-        #         gain += (new_similarity - current_best)
+        element_tensor = self._tensor(element, dtype=torch.long)
         new_similarities = self.sijs[:, element_tensor]
         gain_tensor = torch.maximum(new_similarities - self.similarity_with_nearest_in_effective_x, torch.tensor(0.0))
         gain = torch.sum(gain_tensor).item()
@@ -196,20 +139,7 @@ class FacilityLocation(BaseFunction):
         """
         if not self.memoization_initialized or element in X:
             return
-        
-        # Clear current memoization
-        #self.clearMemoization()
-        
-        # Update memoization for each element in X
-        # for element in X:
-        #     element_tensor = torch.tensor(element, dtype=torch.long)
-            
-        #     # Update best similarities for all master items
-        #     for master_idx in range(self.n_master):
-        #         new_similarity = self.sijs[master_idx, element_tensor].item()
-        #         if new_similarity > self.similarity_with_nearest_in_effective_x[master_idx]:
-        #             self.similarity_with_nearest_in_effective_x[master_idx] = new_similarity
-        element_tensor = torch.tensor(element, dtype=torch.long)
+        element_tensor = self._tensor(element, dtype=torch.long)
         new_similarity = self.sijs[:, element_tensor]
         torch.maximum(new_similarity, self.similarity_with_nearest_in_effective_x, out=self.similarity_with_nearest_in_effective_x)
         
@@ -228,12 +158,6 @@ class FacilityLocation(BaseFunction):
             return
         
         self.clearMemoization()
-        
-        # if not X:
-        #     return
-        # element_tensors = torch.tensor(list(X), dtype=torch.long)
-        # new_similarities = self.sijs[:, element_tensors]
-        # self.similarity_with_nearest_in_effective_x, _ = torch.max(self.similarity_with_nearest_in_effective_x ,new_similarities)
         running = set()
         for ele in X:
             self.updateMemoization(running , ele)
@@ -245,52 +169,4 @@ class FacilityLocation(BaseFunction):
         Return the effective ground set (actual set, not size).
         This matches the C++ implementation.
         """
-        return self.effective_ground_set.copy()  # Return a copy to prevent external modification
-
-
-# if __name__ == "__main__":
-#     print("Testing Facility Location Implementation")
-#     from sklearn.datasets import make_blobs
-#     num_clusters = 10
-#     cluster_std_dev = 4
-#     points, cluster_ids, centers = make_blobs(n_samples=500, centers=num_clusters, 
-#                                             n_features=2, cluster_std=cluster_std_dev, center_box=(0,100), 
-#                                             return_centers=True, random_state=4)
-#     data = list(map(tuple, points))
-#     xs = [x[0] for x in data]
-#     ys = [x[1] for x in data]
-#     # get 6 data points belonging to cluster#1
-#     import random
-#     random.seed(1)
-#     cluster1Indices = [index for index, val in enumerate(cluster_ids) if val == 1]
-#     subset1 = random.sample(cluster1Indices, 6)
-#     subset1xs = [xs[x] for x in subset1]
-#     subset1ys = [ys[x] for x in subset1]
-#     set1 = set(subset1[:-1])
-#     # get 6 data points belonging to different clusters
-#     subset2 = []
-#     for i in range(6):
-#         #find the index of first point that belongs to cluster i
-#         diverse_index = cluster_ids.tolist().index(i)
-#         subset2.append(diverse_index)
-#     subset2xs = [xs[x] for x in subset2]
-#     subset2ys = [ys[x] for x in subset2]
-#     set2 = set(subset2[:-1])
-#     import numpy as np
-#     dataArray = np.array(data)
-#     #start = time.process_time()
-#     obj1 = FacilityLocation(n=500, mode="dense", data=dataArray, metric="euclidean")
-#     #print(f"Time taken by instantiation = {time.process_time() - start}")
-#     print(f"Subset 1's FL value = {obj1.evaluate(set1)}")
-#     print(f"Subset 2's FL value = {obj1.evaluate(set2)}")
-#     print(f"Gain of adding another point ({subset1[-1]}) of same cluster to {set1} = {obj1.marginalGain(set1, subset1[-1])}")
-#     print(f"Gain of adding another point ({subset2[-1]}) of different cluster to {set1} = {obj1.marginalGain(set1, subset2[-1])}")
-#     obj1.setMemoization(set1)
-#     print(f"Subset 1's Fast FL value = {obj1.evaluateWithMemoization(set1)}")
-#     #print(f"Fast gain of adding another point ({subset1[-1]}) of same cluster to {set1} = {obj1.marginalGainWithMemoization(set1, subset1[-1])}")
-#     #start = time.process_time()
-#     greedyList = obj1.maximize(budget=10,optimizer='NaiveGreedy', stopIfZeroGain=False, stopIfNegativeGain=False, verbose=False)
-#     #print(f"Time taken by maximization = {time.process_time() - start}")
-#     print(f"Greedy vector: {greedyList}")
-#     greedyXs = [xs[x[0]] for x in greedyList]
-#     greedyYs = [ys[x[0]] for x in greedyList]
+        return self.effective_ground_set  # Return a copy to prevent external modification

@@ -1,8 +1,10 @@
 from abc import ABC , abstractmethod
+import torch
+from submodlib.runtime import get_default_device
 
 class BaseFunction(ABC):
 
-    def __init__(self,n , mode="dense",sijs=None,data=None,num_clusters=None,cluster_label=None,metric="cosine",cluster_labels=None,query_data=None,query_sijs=None) -> None:
+    def __init__(self,n , mode="dense",sijs=None,data=None,num_clusters=None,cluster_label=None,metric="cosine",cluster_labels=None,query_data=None,query_sijs=None , device = None) -> None:
         self.n = n
         self.mode = mode
         self.metric = metric
@@ -15,6 +17,10 @@ class BaseFunction(ABC):
         self.sijs = sijs
         self.query_data = query_data
         self.query_sijs = query_sijs
+        self.device = torch.device(device) if device else get_default_device()
+    
+    def _tensor(self, val , **kwargs):
+        return torch.as_tensor(val , device=self.device, **kwargs)
         
 
     @abstractmethod
