@@ -59,7 +59,7 @@ class NaiveGreedy(BaseOptimizer):
                 else:
                     gain = function.marginalGain(selected, element)
                 
-                if gain > best_gain:
+                if gain >= best_gain:
                     best_gain = gain
                     best_element = element
                     """TODO: This is a temporary fix to return gain along with element"""

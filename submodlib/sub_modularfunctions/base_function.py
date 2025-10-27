@@ -21,7 +21,11 @@ class BaseFunction(ABC):
     
     def _tensor(self, val , **kwargs):
         return torch.as_tensor(val , device=self.device, **kwargs)
-        
+    
+    def _initialize_ground_sets(self):
+        """Initialize effective ground set and master set like C++ version"""
+        self.effective_ground_set = self._tensor(torch.arange(self.n), dtype=torch.long)
+
 
     @abstractmethod
     def maximize(self , optimizer , budget , stopIfZeroGain , stopIfNegativeGain , epsilon , verbose , show_progress , costs , costSensitiveGreedy):

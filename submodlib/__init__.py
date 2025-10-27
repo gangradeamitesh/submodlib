@@ -2,7 +2,8 @@
 # Author: Vishal Kaushal <vishal.kaushal@gmail.com>
 from .version import __version__
 from .sub_modularfunctions.regular_submod_functions import FacilityLocation
-from .sub_modularfunctions.regular_submod_functions import GraphCut
+#from .sub_modularfunctions.regular_submod_functions import GraphCut
+from .sub_modularfunctions.mutual_info_functions.FLMI import FacilityLocationMutualInformation
 from .functions import FacilityLocationFunction
 from .functions import GraphCutFunction
 from .functions import SetCoverFunction

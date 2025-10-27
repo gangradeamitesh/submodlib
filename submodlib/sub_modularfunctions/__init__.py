@@ -4,6 +4,7 @@ from .userValidator import validate_n, validate_mode, validate_sep_rep, validate
 from .cal_simi_kernel import DenseSimilarity
 from .base_function import BaseFunction
 from submodlib.sub_modularfunctions.optimizers.optimizer_factory import OptimizerFactory
+from submodlib.sub_modularfunctions.mutual_info_functions.FLMI import FacilityLocationMutualInformation
 __all__ = [
     "GraphCut"
     'FacilityLocation',

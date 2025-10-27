@@ -1,14 +1,13 @@
-from submodlib.sub_modularfunctions.base_function import BaseFunction
-import userValidator 
-from userValidator import validate_n, validate_sep_rep , validate_sijs
+from ..userValidator import validate_n, validate_mode, validate_sep_rep, validate_sijs
+from ..cal_simi_kernel import DenseSimilarity
+from ..base_function import BaseFunction
+from ..optimizers.optimizer_factory import OptimizerFactory
 import torch
-from cal_simi_kernel import DenseSimilarity
 import numpy as np
-from optimizers import OptimizerFactory
 
 class FacilityLocationMutualInformation(BaseFunction):
     def __init__(self, n , num_queries , data_sijs=None, query_sijs=None,
-                 data=None, query_data=None, metric="cosine", magnificationEta=1):
+                 data=None, queryData=None, metric="cosine", magnificationEta=1):
         """
         Initializes the Facility Location Mutual Information Function.
 
@@ -18,22 +17,22 @@ class FacilityLocationMutualInformation(BaseFunction):
         - num_neighbors: Number of neighbors to consider for mutual information calculation.
         """
 
-        super().__init__(n=n, sijs=data_sijs, data=data, metric=metric,query_data=query_data,query_sijs=query_sijs)
+        super().__init__(n=n, sijs=data_sijs, data=data, metric=metric,query_data=queryData,query_sijs=query_sijs)
         self.magnificationEta = magnificationEta
         self.effective_ground_set = None
         self.query_cap = None
+        self.num_queries = num_queries
 
 
         validate_n(self.n)
         if self.sijs is not None:
-            """TODO: Validate data_sijs"""
+            validate_sijs(type(self.sijs))
         else:
             if self.data is None:
                 raise Exception("ERROR: Data matrix not provided")
             
             if isinstance(self.data, np.ndarray):
-                self.data = torch.tensor(self.data, dtype=torch.float32)
-            
+                self.data = self._tensor(self.data, dtype=torch.float32)
             if self.metric == "euclidean":
                 self.sijs = DenseSimilarity.euclidean_distance(self.data,self.data)
             elif self.metric == "cosine":
@@ -55,16 +54,21 @@ class FacilityLocationMutualInformation(BaseFunction):
                 raise Exception("ERROR: Neither query data matrix nor query similarity kernel provided") 
         self._initialize_ground_sets()
         self._initialize_query_cap(self.query_sijs)
+        self.similarity_with_nearest_in_effective_x=None
+        self.memoization_initialized = False
+        self._initialize_memoization()
+    
+    def _initialize_memoization(self):
+        """Initialize memoization structures"""    
+        self.similarity_with_nearest_in_effective_x = self._tensor(torch.zeros(self.n, dtype=torch.float32))
+        self.memoization_initialized = True
+
 
     def _initialize_query_cap(self, query_sijs):
         self.query_cap = self.magnificationEta * torch.max(query_sijs, dim=1).values
-    
-    def _initialize_ground_sets(self):
-        """Initialize effective ground set and master set like C++ version"""
-            # Create ground set with items 0 to n-1 (like C++ lines 28-32)
-        self.effective_ground_set = set(range(self.n))
 
-    def maximize(self , optimizer , budget , stopIfZeroGain , stopIfNegativeGain , epsilon , verbose , show_progress , costs , costSensitiveGreedy):
+    def maximize(self, optimizer, budget, stopIfZeroGain=False, stopIfNegativeGain=False, epsilon=None, 
+                 verbose=False, show_progress=True, costs=None, costSensitiveGreedy=False):
         """Maximize the function using the optimizer"""
         optimizer_instance = OptimizerFactory().get_optimizer(optimizer=optimizer)
         return optimizer_instance.optimize(self , budget , stopIfZeroGain , stopIfNegativeGain , epsilon , verbose , show_progress , costs , costSensitiveGreedy)
@@ -90,24 +94,45 @@ class FacilityLocationMutualInformation(BaseFunction):
 
     def marginalGainWithMemoization(self , X , element):
         """Compute the marginal gain of adding an element to the set with memoization"""
-        pass
+        if not self.memoization_initialized:
+            return self.marginalGain(X, element)
+        memo = self.similarity_with_nearest_in_effective_x
+        candidate_sim = self.sijs[:, element]
+        new_best = torch.maximum(memo, candidate_sim)
+        return (torch.minimum(new_best, self.query_cap) - torch.minimum(memo, self.query_cap)).sum().item()
+
 
     def evaluateWithMemoization(self , evaluate_set):
         """Evaluate the function on the given set with memoization"""
-        pass
+        if not self.memoization_initialized:
+            return self.evaluate(evaluate_set)
+        return torch.minimum(self.similarity_with_nearest_in_effective_x, self.query_cap).sum().item()
+    
 
-    def updateMemoization(self , X):
+    def updateMemoization(self , X , element):
         """Update the memoization for the given set"""
-        pass
+        if not self.memoization_initialized or element in X:
+            return
+        elemenet_tensor = self._tensor(element, dtype=torch.long)
+        new_similarities = self.sijs[:, elemenet_tensor]
+        torch.maximum(self.similarity_with_nearest_in_effective_x, new_similarities, out=self.similarity_with_nearest_in_effective_x)        
 
     def clearMemoization(self):
         """Clear the memoization"""
-        pass
+        if self.memoization_initialized:
+            self.similarity_with_nearest_in_effective_x.zero_()
 
     def setMemoization(self , X):
         """Set the memoization for the given set"""
-        pass
+        if not self.memoization_initialized:
+            return
+        
+        self.clearMemoization()
+        running = set()
+        for ele in X:
+            self.updateMemoization(running , ele)
+            running.add(ele)
 
     def getEffectiveGroundSet(self):
         """Get the effective ground set"""
-        return self.effective_ground_set.copy()
+        return self.effective_ground_set

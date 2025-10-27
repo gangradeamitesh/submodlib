@@ -28,8 +28,9 @@ def validate_sijs(sijs_data_type, mode , num_neighbors=None , separate_rep=None)
     if sijs_data_type == torch.Tensor:
         # if separate_rep is None:
         #     raise Exception("ERROR: separate_rep bool must be specified with custom dense kernel")
-        if mode != "dense":
-            raise Exception("ERROR: Dense kernel provided, but mode is not dense")
+        # if mode != "dense":
+        #     raise Exception("ERROR: Dense kernel provided, but mode is not dense")
+        pass
     else:
         raise Exception("Invalid kernel provided")
 def validate_data_sijs():
