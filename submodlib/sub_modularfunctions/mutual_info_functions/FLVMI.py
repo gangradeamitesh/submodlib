@@ -118,17 +118,29 @@ class FacilityLocationVariantMutualInformation(BaseFunction):
         return cov + self.query_cap[evaluate_set]
     
 
-    def updateMemoization(self , X):
+    def updateMemoization(self , X,element):
         """Update the memoization for the given set"""
-        pass
+        if not self.memoization_initialized or element in X:
+            return
+        candidate_sim = self.sijs[self._tensor(element , dtype=torch.long)]
+        torch.maximum_(self.similarity_with_nearest_in_effective_x, candidate_sim , out=self.similarity_with_nearest_in_effective_x)
+
 
     def clearMemoization(self):
         """Clear the memoization"""
-        pass
+        if self.memoization_initialized:
+            self.similarity_with_nearest_in_effective_x.zero_()
 
     def setMemoization(self , X):
         """Set the memoization for the given set"""
-        pass
+        if not self.memoization_initialized:
+            return
+        
+        self.clearMemoization()
+        running = set()
+        for ele in X:
+            self.updateMemoization(running , ele)
+            running.add(ele)
 
     def getEffectiveGroundSet(self):
         """Get the effective ground set"""
