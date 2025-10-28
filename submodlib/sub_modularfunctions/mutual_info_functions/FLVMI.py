@@ -22,6 +22,8 @@ class FacilityLocationVariantMutualInformation(BaseFunction):
         self.queryDiversityEta = queryDiversityEta
         self.effective_ground_set = None
         self.query_cap = None
+        self.num_queries = num_queries
+
 
 
         validate_n(self.n)
@@ -32,7 +34,7 @@ class FacilityLocationVariantMutualInformation(BaseFunction):
                 raise Exception("ERROR: Data matrix not provided")
             
             if isinstance(self.data, np.ndarray):
-                self.data = torch.tensor(self.data, dtype=torch.float32)
+                self.data = self._tensor(self.data, dtype=torch.float32)
             
             if self.metric == "euclidean":
                 self.sijs = DenseSimilarity.euclidean_distance(self.data,self.data)
@@ -46,7 +48,7 @@ class FacilityLocationVariantMutualInformation(BaseFunction):
             if self.query_data is None:
                 raise Exception("ERROR: Query data matrix not provided")
             if isinstance(self.query_data, np.ndarray):
-                self.query_data = torch.tensor(self.query_data, dtype=torch.float32)
+                self.query_data = self._tensor(self.query_data, dtype=torch.float32)
             if self.metric == "euclidean":
                 self.query_sijs = DenseSimilarity.euclidean_distance(self.data , self.query_data)
             elif self.metric == "cosine":
@@ -55,6 +57,9 @@ class FacilityLocationVariantMutualInformation(BaseFunction):
                 raise Exception("ERROR: Neither query data matrix nor query similarity kernel provided") 
         self._initialize_ground_sets()
         self._initialize_query_cap(self.query_sijs)
+        self.similarity_with_nearest_in_effective_x=None
+        self.memoization_initialized = False
+        self._initialize_memoization()
 
     def _initialize_query_cap(self, query_sijs):
         self.query_cap = self.queryDiversityEta * torch.sum(torch.max(query_sijs, dim=1)).values
@@ -84,17 +89,34 @@ class FacilityLocationVariantMutualInformation(BaseFunction):
         """Evalaute the function on the given set"""
         if not evaluate_set:
             return 0.0
-        X_tensor = torch.tensor(list(evaluate_set), dtype=torch.long)
+        X_tensor = self._tensor(evaluate_set, dtype=torch.long)
         return torch.sum(torch.max(self.sijs[:,X_tensor])).values + self.query_cap
     
 
+
     def marginalGainWithMemoization(self , X , element):
         """Compute the marginal gain of adding an element to the set with memoization"""
-        pass
+        # gain = 0.0
+        # for i in range(self.n):
+        #     gain+= max(self.similarity_with_nearest_in_effective_x[i], self.sijs[element][i]) - self.similarity_with_nearest_in_effective_x[i]
+        # gain += self.query_cap
+        # return 
+        memo = self.similarity_with_nearest_in_effective_x
+        candidate_sim = self.sijs[:, element]
+        new_best = torch.maximum(memo, candidate_sim)
+        gain = torch.minimum(new_best, self.query_cap) - torch.minimum(memo, self.query_cap)
+        return gain.sum().item()
+
 
     def evaluateWithMemoization(self , evaluate_set):
         """Evaluate the function on the given set with memoization"""
-        pass
+        if not evaluate_set:
+            return 0.0
+        if not self.memoization_initialized:
+            return self.evaluate(evaluate_set)
+        cov = torch.sum(self.similarity_with_nearest_in_effective_x).item()
+        return cov + self.query_cap[evaluate_set]
+    
 
     def updateMemoization(self , X):
         """Update the memoization for the given set"""

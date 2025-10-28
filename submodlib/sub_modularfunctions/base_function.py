@@ -26,6 +26,10 @@ class BaseFunction(ABC):
         """Initialize effective ground set and master set like C++ version"""
         self.effective_ground_set = self._tensor(torch.arange(self.n), dtype=torch.long)
 
+    def _initialize_memoization(self):
+        """Initialize memoization structures"""    
+        self.similarity_with_nearest_in_effective_x = self._tensor(torch.zeros(self.n, dtype=torch.float32))
+        self.memoization_initialized = True
 
     @abstractmethod
     def maximize(self , optimizer , budget , stopIfZeroGain , stopIfNegativeGain , epsilon , verbose , show_progress , costs , costSensitiveGreedy):
