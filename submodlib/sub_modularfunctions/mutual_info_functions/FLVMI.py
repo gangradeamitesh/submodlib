@@ -1,13 +1,15 @@
-from submodlib.sub_modularfunctions.base_function import BaseFunction
-import userValidator 
-from userValidator import validate_n, validate_sep_rep , validate_sijs
+from ..userValidator import validate_n, validate_mode, validate_sep_rep, validate_sijs
+from ..cal_simi_kernel import DenseSimilarity
+from ..base_function import BaseFunction
+from ..optimizers.optimizer_factory import OptimizerFactory
 import torch
-from cal_simi_kernel import DenseSimilarity
 import numpy as np
-from optimizers import OptimizerFactory
+
+
+
 
 class FacilityLocationVariantMutualInformation(BaseFunction):
-    def __init__(self, n , num_queries , data_sijs=None, query_sijs=None,
+    def __init__(self, n , num_queries , query_sijs=None,
                  data=None, query_data=None, metric="cosine", queryDiversityEta=1):
         """
         Initializes the Facility Location Mutual Information Function.
@@ -18,10 +20,9 @@ class FacilityLocationVariantMutualInformation(BaseFunction):
         - num_neighbors: Number of neighbors to consider for mutual information calculation.
         """
 
-        super().__init__(n=n, sijs=data_sijs, data=data, metric=metric,query_data=query_data,query_sijs=query_sijs)
+        super().__init__(n=n, data=data, metric=metric,query_data=query_data,query_sijs=query_sijs)
         self.queryDiversityEta = queryDiversityEta
         self.effective_ground_set = None
-        self.query_cap = None
         self.num_queries = num_queries
 
 
@@ -55,18 +56,24 @@ class FacilityLocationVariantMutualInformation(BaseFunction):
                 self.query_sijs = DenseSimilarity.cosine_similarity(self.data , self.query_data)
             else:   
                 raise Exception("ERROR: Neither query data matrix nor query similarity kernel provided") 
+        self.effective_query_set = None
         self._initialize_ground_sets()
-        self._initialize_query_cap(self.query_sijs)
+        self._initialize_query_sets()
         self.similarity_with_nearest_in_effective_x=None
         self.memoization_initialized = False
         self._initialize_memoization()
-
-    def _initialize_query_cap(self, query_sijs):
-        self.query_cap = self.queryDiversityEta * torch.sum(torch.max(query_sijs, dim=1)).values
+        self.query_cap = torch.max(self.query_sijs, dim=1).values
     
+    def _initialize_memoization(self):
+        """Initialize memoization structures"""    
+        self.similarity_with_nearest_in_effective_x = self._tensor(torch.zeros(self.num_queries, dtype=torch.float32))
+        self.memoization_initialized = True
+
+    def _initialize_query_sets(self):
+        self.effective_query_set = self._tensor(torch.arange(self.num_queries), dtype=torch.long)
+
     def _initialize_ground_sets(self):
         """Initialize effective ground set and master set like C++ version"""
-            # Create ground set with items 0 to n-1 (like C++ lines 28-32)
         self.effective_ground_set = set(range(self.n))
 
     def maximize(self , optimizer , budget , stopIfZeroGain , stopIfNegativeGain , epsilon , verbose , show_progress , costs , costSensitiveGreedy):
@@ -87,43 +94,47 @@ class FacilityLocationVariantMutualInformation(BaseFunction):
 
     def evaluate(self , evaluate_set):
         """Evalaute the function on the given set"""
-        if not evaluate_set:
-            return 0.0
-        X_tensor = self._tensor(evaluate_set, dtype=torch.long)
-        return torch.sum(torch.max(self.sijs[:,X_tensor])).values + self.query_cap
-    
-
+        gain = 0.0
+        if len(evaluate_set) == 0:
+            return 0
+        ids = self._tensor(list(evaluate_set), dtype=torch.long)
+        per_query_set = self.query_sijs[ids].max(dim=0).values
+        first_term = torch.sum(per_query_set).item()
+        second_term = self.queryDiversityEta * torch.sum(self.query_cap[ids]).item()
+        return first_term + second_term
 
     def marginalGainWithMemoization(self , X , element):
         """Compute the marginal gain of adding an element to the set with memoization"""
-        # gain = 0.0
-        # for i in range(self.n):
-        #     gain+= max(self.similarity_with_nearest_in_effective_x[i], self.sijs[element][i]) - self.similarity_with_nearest_in_effective_x[i]
-        # gain += self.query_cap
-        # return 
-        memo = self.similarity_with_nearest_in_effective_x
-        candidate_sim = self.sijs[:, element]
-        new_best = torch.maximum(memo, candidate_sim)
-        gain = torch.minimum(new_best, self.query_cap) - torch.minimum(memo, self.query_cap)
-        return gain.sum().item()
+        if element in X:
+            return 0.0
+
+        candidate = self.query_sijs[self._tensor(element, dtype=torch.long)] 
+        new_best = torch.maximum(self.similarity_with_nearest_in_effective_x, candidate)
+        delta_queries = (new_best - self.similarity_with_nearest_in_effective_x).sum().item()
+        delta_items = self.queryDiversityEta * self.query_cap[self._tensor(element , dtype=torch.long)].item()
+        return delta_queries + delta_items
+
 
 
     def evaluateWithMemoization(self , evaluate_set):
         """Evaluate the function on the given set with memoization"""
-        if not evaluate_set:
-            return 0.0
-        if not self.memoization_initialized:
-            return self.evaluate(evaluate_set)
-        cov = torch.sum(self.similarity_with_nearest_in_effective_x).item()
-        return cov + self.query_cap[evaluate_set]
+        res= 0.0
+        if len(evaluate_set) == 0:
+            return 0
+        # for i in range(self.num_queries):
+        #     res += self.similarity_with_nearest_in_effective_x[i].item()
+
+        res = self.similarity_with_nearest_in_effective_x.sum().item()
+        res += self.queryDiversityEta * torch.sum(self.query_cap[self._tensor(list(evaluate_set), dtype=torch.long)]).item()
+        return res
     
 
     def updateMemoization(self , X,element):
         """Update the memoization for the given set"""
-        if not self.memoization_initialized or element in X:
+        if element in X:
             return
-        candidate_sim = self.sijs[self._tensor(element , dtype=torch.long)]
-        torch.maximum_(self.similarity_with_nearest_in_effective_x, candidate_sim , out=self.similarity_with_nearest_in_effective_x)
+        candidate = self.query_sijs[self._tensor(element, dtype=torch.long)]
+        torch.maximum(self.similarity_with_nearest_in_effective_x, candidate, out=self.similarity_with_nearest_in_effective_x)
 
 
     def clearMemoization(self):
@@ -144,4 +155,4 @@ class FacilityLocationVariantMutualInformation(BaseFunction):
 
     def getEffectiveGroundSet(self):
         """Get the effective ground set"""
-        return self.effective_ground_set.copy()
+        return self.effective_ground_set

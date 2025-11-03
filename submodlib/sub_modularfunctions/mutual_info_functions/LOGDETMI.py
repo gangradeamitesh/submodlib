@@ -1,29 +1,27 @@
-
-from submodlib.sub_modularfunctions.base_function import BaseFunction
-import userValidator 
-from userValidator import validate_n, validate_sep_rep , validate_sijs
+from ..userValidator import validate_n, validate_mode, validate_sep_rep, validate_sijs
+from ..cal_simi_kernel import DenseSimilarity
+from ..base_function import BaseFunction
+from ..optimizers.optimizer_factory import OptimizerFactory
 import torch
-from cal_simi_kernel import DenseSimilarity
 import numpy as np
-from optimizers import OptimizerFactory
 
-"""TODO : To implement all the functionlity for Graph Cut Mutual Information Function"""
 
-class GraphCutMutualInformation(BaseFunction):
-    def __init__(self, n , num_queries, query_sijs=None,
-                 data=None, queryData=None, metric="cosine"):
-        """
-        Initializes the Facility Location Mutual Information Function.
+class LogDeterminantMutualInformation(BaseFunction):
 
-        Parameters:
-        - data: The ground set data points.
-        - query_data: The query set data points.
-        - num_neighbors: Number of neighbors to consider for mutual information calculation.
-        """
+    def __init__(self, n,num_queries,lambdaVal=1.0,data_sijs=None,query_sijs=None, data=None, queryData=None, metric="cosine"):
+        
+        super().__init__(n, num_queries, data_sijs, data,  metric, queryData, query_sijs)
 
-        super().__init__(n=n, data=data, metric=metric,query_data=queryData,query_sijs=query_sijs)
-        self.evalX = 0.0
+        self.lambdaVal = lambdaVal
+        self.effective_ground_set = None
+        self.query_cap = None
+        self.query_query_sijs = None
+        
+        if self.n <= 0:
+            raise Exception("ERROR: Number of elements in ground set must be positive")
 
+        if self.num_queries < 0:
+            raise Exception("ERROR: Number of queries must be >= 0")
         validate_n(self.n)
         if self.sijs is not None:
             """TODO: Validate data_sijs"""
@@ -35,25 +33,36 @@ class GraphCutMutualInformation(BaseFunction):
                 self.data = self._tensor(self.data, dtype=torch.float32)
             
             if self.metric == "euclidean":
-                self.sijs = DenseSimilarity.euclidean_distance(self.data,self.query_data)
+                self.sijs = DenseSimilarity.euclidean_distance(self.data,self.data)
             elif self.metric == "cosine":
-                self.sijs = DenseSimilarity.cosine_similarity(self.data,self.query_data)
+                self.sijs = DenseSimilarity.cosine_similarity(self.data,self.data)
             else:
                 raise Exception("ERROR: Neither ground set data matrix nor similarity kernel provided")
-        # if self.query_sijs is not None:
-        #     """TODO : Validate query_sijs"""
-        # else:
-        #     if self.query_data is None:
-        #         raise Exception("ERROR: Query data matrix not provided")
-        #     if isinstance(self.query_data, np.ndarray):
-        #         self.query_data = torch.tensor(self.query_data, dtype=torch.float32)
-        #     if self.metric == "euclidean":
-        #         self.query_sijs = DenseSimilarity.euclidean_distance(self.data , self.query_data)
-        #     elif self.metric == "cosine":
-        #         self.query_sijs = DenseSimilarity.cosine_similarity(self.data , self.query_data)
-        #     else:   
-        #         raise Exception("ERROR: Neither query data matrix nor query similarity kernel provided") 
-                self._initialize_ground_sets()
+        if self.query_query_sijs is not None:
+            """TODO : Validate query_sijs"""
+        else:
+            if self.query_data is None:
+                raise Exception("ERROR: Query data matrix not provided")
+            if isinstance(self.query_data, np.ndarray):
+                self.query_data = self._tensor(self.query_data, dtype=torch.float32)
+            if self.metric == "euclidean":
+                self.query_query_sijs = DenseSimilarity.euclidean_distance(self.query_data , self.query_data)
+            elif self.metric == "cosine":
+                self.query_query_sijs = DenseSimilarity.cosine_similarity(self.query_data , self.query_data)
+            else:   
+                raise Exception("ERROR: Neither query data matrix nor query similarity kernel provided")
+        if self.query_sijs is not None:
+            """TODO : Validate query_sijs"""
+        else:
+            if self.query_data is None:
+                raise Exception("ERROR: Query data matrix not provided")
+            if self.metric == "euclidean":
+                self.query_sijs = DenseSimilarity.euclidean_distance(self.data , self.query_data)
+            elif self.metric == "cosine":
+                self.query_sijs = DenseSimilarity.cosine_similarity(self.data , self.query_data)
+            else:   
+                raise Exception("ERROR: Neither query data matrix nor query similarity kernel provided")
+            
         self.similarity_with_nearest_in_effective_x=None
         self.memoization_initialized = False
         self._initialize_memoization()
@@ -62,12 +71,12 @@ class GraphCutMutualInformation(BaseFunction):
     def _initialize_ground_sets(self):
         """Initialize effective ground set and master set like C++ version"""
         self.effective_ground_set = set(range(self.n))
-
+    
     def maximize(self , optimizer , budget , stopIfZeroGain , stopIfNegativeGain , epsilon , verbose , show_progress , costs , costSensitiveGreedy):
         """Maximize the function using the optimizer"""
         optimizer_instance = OptimizerFactory().get_optimizer(optimizer=optimizer)
         return optimizer_instance.optimize(self , budget , stopIfZeroGain , stopIfNegativeGain , epsilon , verbose , show_progress , costs , costSensitiveGreedy)
-
+    
     def marginalGain(self , X , element):
         """Compute the marginal gain of adding an element to the set"""
         #return torch.sum(self.sijs[element , :]) * 2
@@ -81,7 +90,7 @@ class GraphCutMutualInformation(BaseFunction):
         """Evalaute the function on the given set"""
         if not evaluate_set:
             return 0.0
-        return self.sijs[self._tensor(list(evaluate_set), dtype=torch.long) ].sum().item()
+        
 
     def marginalGainWithMemoization(self , X , element):
         """Compute the marginal gain of adding an element to the set with memoization"""
