@@ -4,9 +4,6 @@ import torch.nn.functional as F
 
 class DenseSimilarity:
 
-    def __init__(self) -> None:
-        pass
-
     @staticmethod
     def euclidean_distance(data, candidate_data , sigma=1.0):
         dist = torch.cdist(data, candidate_data, p=2)

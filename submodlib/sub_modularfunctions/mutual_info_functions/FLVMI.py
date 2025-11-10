@@ -5,9 +5,6 @@ from ..optimizers.optimizer_factory import OptimizerFactory
 import torch
 import numpy as np
 
-
-
-
 class FacilityLocationVariantMutualInformation(BaseFunction):
     def __init__(self, n , num_queries , query_sijs=None,
                  data=None, query_data=None, metric="cosine", queryDiversityEta=1):
@@ -28,21 +25,21 @@ class FacilityLocationVariantMutualInformation(BaseFunction):
 
 
         validate_n(self.n)
-        if self.sijs is not None:
-            """TODO: Validate data_sijs"""
-        else:
-            if self.data is None:
-                raise Exception("ERROR: Data matrix not provided")
+        # if self.sijs is not None:
+        #     """TODO: Validate data_sijs"""
+        # else:
+        #     if self.data is None:
+        #         raise Exception("ERROR: Data matrix not provided")
             
-            if isinstance(self.data, np.ndarray):
-                self.data = self._tensor(self.data, dtype=torch.float32)
+        #     if isinstance(self.data, np.ndarray):
+        #         self.data = self._tensor(self.data, dtype=torch.float32)
             
-            if self.metric == "euclidean":
-                self.sijs = DenseSimilarity.euclidean_distance(self.data,self.data)
-            elif self.metric == "cosine":
-                self.sijs = DenseSimilarity.cosine_similarity(self.data,self.data)
-            else:
-                raise Exception("ERROR: Neither ground set data matrix nor similarity kernel provided")
+        #     if self.metric == "euclidean":
+        #         self.sijs = DenseSimilarity.euclidean_distance(self.data,self.data)
+        #     elif self.metric == "cosine":
+        #         self.sijs = DenseSimilarity.cosine_similarity(self.data,self.data)
+        #     else:
+        #         raise Exception("ERROR: Neither ground set data matrix nor similarity kernel provided")
         if self.query_sijs is not None:
             """TODO : Validate query_sijs"""
         else:
@@ -74,9 +71,9 @@ class FacilityLocationVariantMutualInformation(BaseFunction):
 
     def _initialize_ground_sets(self):
         """Initialize effective ground set and master set like C++ version"""
-        self.effective_ground_set = set(range(self.n))
+        self.effective_ground_set = self._tensor(torch.arange(self.n), dtype=torch.long)
 
-    def maximize(self , optimizer , budget , stopIfZeroGain , stopIfNegativeGain , epsilon , verbose , show_progress , costs , costSensitiveGreedy):
+    def maximize(self , optimizer , budget , stopIfZeroGain , stopIfNegativeGain , epsilon=False , verbose=False , show_progress=False , costs=None , costSensitiveGreedy=False):
         """Maximize the function using the optimizer"""
         optimizer_instance = OptimizerFactory().get_optimizer(optimizer=optimizer)
         return optimizer_instance.optimize(self , budget , stopIfZeroGain , stopIfNegativeGain , epsilon , verbose , show_progress , costs , costSensitiveGreedy)
@@ -99,22 +96,32 @@ class FacilityLocationVariantMutualInformation(BaseFunction):
             return 0
         ids = self._tensor(list(evaluate_set), dtype=torch.long)
         per_query_set = self.query_sijs[ids].max(dim=0).values
-        first_term = torch.sum(per_query_set).item()
-        second_term = self.queryDiversityEta * torch.sum(self.query_cap[ids]).item()
+        first_term = torch.sum(per_query_set)
+        second_term = self.queryDiversityEta * torch.sum(self.query_cap[ids])
         return first_term + second_term
 
     def marginalGainWithMemoization(self , X , element):
         """Compute the marginal gain of adding an element to the set with memoization"""
-        if element in X:
+        
+        idx = int(element)
+        if idx in X:
             return 0.0
 
-        candidate = self.query_sijs[self._tensor(element, dtype=torch.long)] 
+        candidate = self.query_sijs[idx] 
         new_best = torch.maximum(self.similarity_with_nearest_in_effective_x, candidate)
-        delta_queries = (new_best - self.similarity_with_nearest_in_effective_x).sum().item()
-        delta_items = self.queryDiversityEta * self.query_cap[self._tensor(element , dtype=torch.long)].item()
+        delta_queries = torch.sum(new_best - self.similarity_with_nearest_in_effective_x)
+        delta_items = self.queryDiversityEta * self.query_cap[idx]
         return delta_queries + delta_items
+    
+    def batchedGain(self ,X):
+        gain = torch.maximum(self.similarity_with_nearest_in_effective_x , self.query_sijs) - self.similarity_with_nearest_in_effective_x
+        gain = gain.sum(dim=1) + self.queryDiversityEta * self.query_cap
+        gain = gain.masked_fill(X, float("-inf"))
+        return gain.max(dim=0)
 
-
+    def updateBatchMemo(self,element):
+        candidate = self.query_sijs[element]
+        self.similarity_with_nearest_in_effective_x = torch.maximum(self.similarity_with_nearest_in_effective_x, candidate)
 
     def evaluateWithMemoization(self , evaluate_set):
         """Evaluate the function on the given set with memoization"""
@@ -124,16 +131,17 @@ class FacilityLocationVariantMutualInformation(BaseFunction):
         # for i in range(self.num_queries):
         #     res += self.similarity_with_nearest_in_effective_x[i].item()
 
-        res = self.similarity_with_nearest_in_effective_x.sum().item()
-        res += self.queryDiversityEta * torch.sum(self.query_cap[self._tensor(list(evaluate_set), dtype=torch.long)]).item()
+        res = self.similarity_with_nearest_in_effective_x.sum()
+        res += self.queryDiversityEta * torch.sum(self.query_cap[self._tensor(list(evaluate_set), dtype=torch.long)])
         return res
     
 
     def updateMemoization(self , X,element):
         """Update the memoization for the given set"""
-        if element in X:
+        idx = int(element)
+        if idx in X:
             return
-        candidate = self.query_sijs[self._tensor(element, dtype=torch.long)]
+        candidate = self.query_sijs[idx]
         torch.maximum(self.similarity_with_nearest_in_effective_x, candidate, out=self.similarity_with_nearest_in_effective_x)
 
 
