@@ -7,7 +7,7 @@ import numpy as np
 
 class FacilityLocationMutualInformation(BaseFunction):
     def __init__(self, n , num_queries , data_sijs=None, query_sijs=None,
-                 data=None, queryData=None, metric="cosine", magnificationEta=1):
+                 data=None, query_data=None, metric="cosine", magnificationEta=1):
         """
         Initializes the Facility Location Mutual Information Function.
 
@@ -17,10 +17,9 @@ class FacilityLocationMutualInformation(BaseFunction):
         - num_neighbors: Number of neighbors to consider for mutual information calculation.
         """
 
-        super().__init__(n=n, sijs=data_sijs, data=data, metric=metric,query_data=queryData,query_sijs=query_sijs)
+        super().__init__(n=n, sijs=data_sijs, data=data, metric=metric,query_data=query_data,query_sijs=query_sijs)
         self.magnificationEta = magnificationEta
         self.effective_ground_set = None
-        self.query_cap = None
         self.num_queries = num_queries
 
 
@@ -32,7 +31,7 @@ class FacilityLocationMutualInformation(BaseFunction):
                 raise Exception("ERROR: Data matrix not provided")
             
             if isinstance(self.data, np.ndarray):
-                self.data = self._tensor(self.data, dtype=torch.float32)
+                self.data = self._tensor(self.data, dtype=torch.float16)
             if self.metric == "euclidean":
                 self.sijs = DenseSimilarity.euclidean_distance(self.data,self.data)
             elif self.metric == "cosine":
@@ -45,7 +44,7 @@ class FacilityLocationMutualInformation(BaseFunction):
             if self.query_data is None:
                 raise Exception("ERROR: Query data matrix not provided")
             if isinstance(self.query_data, np.ndarray):
-                self.query_data = torch.tensor(self.query_data, dtype=torch.float32)
+                self.query_data = self._tensor(self.query_data, dtype=torch.float16)
             if self.metric == "euclidean":
                 self.query_sijs = DenseSimilarity.euclidean_distance(self.data , self.query_data)
             elif self.metric == "cosine":
@@ -57,6 +56,7 @@ class FacilityLocationMutualInformation(BaseFunction):
         self.similarity_with_nearest_in_effective_x=None
         self.memoization_initialized = False
         self._initialize_memoization()
+
     
     def _initialize_memoization(self):
         """Initialize memoization structures"""    
@@ -100,7 +100,29 @@ class FacilityLocationMutualInformation(BaseFunction):
         candidate_sim = self.sijs[:, element]
         new_best = torch.maximum(memo, candidate_sim)
         return (torch.minimum(new_best, self.query_cap) - torch.minimum(memo, self.query_cap)).sum().item()
+    
 
+    def batchedGain(self , X):
+        # candidate_sims = self.sijs.masked_fill(X , float("-inf"))
+        # new_best = torch.maximum(self.similarity_with_nearest_in_effective_x , candidate_sims) - self.similarity_with_nearest_in_effective_x
+        # old_cap = torch.minimum(self.similarity_with_nearest_in_effective_x, self.query_cap)
+        # new_cap = torch.minimum(new_best , self.query_cap)
+        # gain = (new_cap).sum(dim=0)
+        # return gain.max(dim=0)
+        remaining = (~X).nonzero(as_tuple=False).flatten()
+        if remaining.numel() == 0:
+            return torch.tensor(0., device=self.device), torch.tensor(-1, device=self.device)
+        candidate_sims = self.sijs[:, remaining]
+        new_best = torch.maximum(self.similarity_with_nearest_in_effective_x.unsqueeze(1) , candidate_sims)
+        old_cap = torch.minimum(self.similarity_with_nearest_in_effective_x.unsqueeze(1),self.query_cap.unsqueeze(1))
+        new_cap = torch.minimum(new_best,self.query_cap.unsqueeze(1))
+        gains = (new_cap-old_cap).sum(dim=0)
+        return gains.max(dim=0)
+
+    
+    def updateBatchMemo(self , element):
+        candidate = self.sijs[: , element]
+        self.similarity_with_nearest_in_effective_x = torch.maximum(self.similarity_with_nearest_in_effective_x , candidate)
 
     def evaluateWithMemoization(self , evaluate_set):
         """Evaluate the function on the given set with memoization"""

@@ -2,8 +2,10 @@ import torch
 import torch.nn.functional as F
 from vectorized_greedy import maximize_function
 
-from submodlib import FacilityLocationVariantMutualInformationFunction
-from submodlib import FacilityLocationVariantMutualInformation
+# from submodlib import FacilityLocationVariantMutualInformationFunction
+# from submodlib import FacilityLocationVariantMutualInformation
+from submodlib import FacilityLocationMutualInformation
+from submodlib import FacilityLocationMutualInformationFunction
 
 # data_dict = torch.load("p3_data_dict.pt")
 # device = ("cuda" if torch.cuda.is_available() else "cpu")
@@ -89,14 +91,9 @@ def main():
     
 
 if __name__ == "__main__":
-    # seleted_features = main()
-    # print(seleted_features.shape)
+    
 
-
-    selected_directly_res , selected_directly = do_selection(budget=BUDGET , data=data.to(device) , query_data=query,device=device)
-    print(selected_directly_res)
-
-    obj = FacilityLocationVariantMutualInformation(n=data.shape[0], num_queries=query.shape[0], queryDiversityEta=1.0 ,data=data , query_data=query, metric="cosine")
+    obj = FacilityLocationMutualInformation(n=data.shape[0], num_queries=query.shape[0], magnificationEta=1.0 ,data=data , query_data=query, metric="cosine")
 
     greedy_list = obj.maximize(optimizer="NaiveGreedy" , budget=BUDGET , stopIfZeroGain=False , stopIfNegativeGain =False, epsilon=False , verbose=False , show_progress=False , costs=None , costSensitiveGreedy=False)
     print("---------------")
@@ -104,23 +101,9 @@ if __name__ == "__main__":
 
 
     print("C++ --------------------")
-    obj = FacilityLocationVariantMutualInformationFunction(n=data.shape[0], num_queries=query.shape[0], data=data, 
+    obj = FacilityLocationMutualInformationFunction(n=data.shape[0], num_queries=query.shape[0], data=data, 
                                                     queryData=query, metric="cosine", 
-                                                    queryDiversityEta=1.0)
+                                                    magnificationEta=1.0)
     greedyList = obj.maximize(budget=10,optimizer='NaiveGreedy', stopIfZeroGain=False, 
                               stopIfNegativeGain=False, verbose=False)
     print(greedyList)
-    #print(seleted_features == selected_directly)
-    # similarity_kernel = cosine_similarity(data, query).detach().cpu().numpy()
-    # print(similarity_kernel.shape)
-    # print(similarity_kernel.device)
-    # obj = FacilityLocationVariantMutualInformationFunction(n=data.shape[0], num_queries=query.shape[0], queryDiversityEta=1.0 , query_sijs=similarity_kernel)
-    # print("Maximizing Facility Location Variant Mutual Information Function")
-    # greedyList = obj.maximize(budget=50,optimizer='NaiveGreedy', stopIfZeroGain=False, 
-    #                             stopIfNegativeGain=False, verbose=False)
-    # greedy_idx = [r[0] for r in greedyList]
-    # selected_data_c = data[greedy_idx]
-    # for i in range(seleted_features.shape[0]):
-    #     print(selected_data_c[i])
-    #     print(seleted_features[i])
-        

@@ -103,15 +103,16 @@ class FacilityLocationVariantMutualInformation(BaseFunction):
     def marginalGainWithMemoization(self , X , element):
         """Compute the marginal gain of adding an element to the set with memoization"""
         
-        idx = int(element)
-        if idx in X:
-            return 0.0
+        # idx = int(element)
+        # if idx in X:
+        #     return 0.0
 
-        candidate = self.query_sijs[idx] 
-        new_best = torch.maximum(self.similarity_with_nearest_in_effective_x, candidate)
-        delta_queries = torch.sum(new_best - self.similarity_with_nearest_in_effective_x)
-        delta_items = self.queryDiversityEta * self.query_cap[idx]
-        return delta_queries + delta_items
+        # candidate = self.query_sijs[idx] 
+        # new_best = torch.maximum(self.similarity_with_nearest_in_effective_x, candidate)
+        # delta_queries = torch.sum(new_best - self.similarity_with_nearest_in_effective_x)
+        # delta_items = self.queryDiversityEta * self.query_cap[idx]
+        # return delta_queries + delta_items
+        
     
     def batchedGain(self ,X):
         gain = torch.maximum(self.similarity_with_nearest_in_effective_x , self.query_sijs) - self.similarity_with_nearest_in_effective_x
