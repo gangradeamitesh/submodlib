@@ -40,8 +40,8 @@ class NaiveGreedy(BaseOptimizer):
         if isinstance(ground_set, torch.Tensor):
             ground_set = ground_set.tolist()
         
-        # Initialize memoization for the empty set
-        function.setMemoization(selected)
+        # # Initialize memoization for the empty set
+        # function.setMemoization(selected)
 
         iterator = range(budget)
         progress = None
@@ -56,9 +56,7 @@ class NaiveGreedy(BaseOptimizer):
         for iteration in iterator:
             if verbose:
                 print(f"Iteration {iteration + 1}/{budget}")
-            
-            best_gain = -float('inf')
-            
+                        
             # for element in ground_set:
             #     if element in selected:
             #         continue
@@ -75,6 +73,8 @@ class NaiveGreedy(BaseOptimizer):
             #         best_element = element
             #         """TODO: This is a temporary fix to return gain along with element"""
             #         output_pair = (element, gain) 
+
+            """Vectorized the Naive Greedy"""
             best_gain , best_idx = function.batchedGain(selected)
             best_idx = int(best_idx.item())
             selected[best_idx] = True

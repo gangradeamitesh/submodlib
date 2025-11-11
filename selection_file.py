@@ -1,8 +1,8 @@
 import torch
-from submodlib import FacilityLocationVariantMutualInformationFunction
 import torch.nn.functional as F
 from vectorized_greedy import maximize_function
 
+from submodlib import FacilityLocationVariantMutualInformationFunction
 from submodlib import FacilityLocationVariantMutualInformation
 
 # data_dict = torch.load("p3_data_dict.pt")
@@ -24,7 +24,6 @@ from submodlib import FacilityLocationVariantMutualInformation
 # dim=0).to(device)
 
 def _mps_available():
-    # Gracefully handle environments where torch.mps lacks the capability checks
     return hasattr(torch.backends, "mps") and torch.backends.mps.is_available()
 
 
@@ -90,12 +89,27 @@ def main():
     
 
 if __name__ == "__main__":
-    seleted_features = main()
-    print(seleted_features.shape)
+    # seleted_features = main()
+    # print(seleted_features.shape)
 
 
     selected_directly_res , selected_directly = do_selection(budget=BUDGET , data=data.to(device) , query_data=query,device=device)
     print(selected_directly_res)
+
+    obj = FacilityLocationVariantMutualInformation(n=data.shape[0], num_queries=query.shape[0], queryDiversityEta=1.0 ,data=data , query_data=query, metric="cosine")
+
+    greedy_list = obj.maximize(optimizer="NaiveGreedy" , budget=BUDGET , stopIfZeroGain=False , stopIfNegativeGain =False, epsilon=False , verbose=False , show_progress=False , costs=None , costSensitiveGreedy=False)
+    print("---------------")
+    print(greedy_list)
+
+
+    print("C++ --------------------")
+    obj = FacilityLocationVariantMutualInformationFunction(n=data.shape[0], num_queries=query.shape[0], data=data, 
+                                                    queryData=query, metric="cosine", 
+                                                    queryDiversityEta=1.0)
+    greedyList = obj.maximize(budget=10,optimizer='NaiveGreedy', stopIfZeroGain=False, 
+                              stopIfNegativeGain=False, verbose=False)
+    print(greedyList)
     #print(seleted_features == selected_directly)
     # similarity_kernel = cosine_similarity(data, query).detach().cpu().numpy()
     # print(similarity_kernel.shape)
