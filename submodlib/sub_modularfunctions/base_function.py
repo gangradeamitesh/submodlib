@@ -16,7 +16,8 @@ class BaseFunction(ABC):
         self.cluster_labels = cluster_labels
         self.num_clusters = num_clusters
         self.sijs = sijs
-        self.query_data = self._tensor(query_data)
+        if query_data != None:
+            self.query_data = self._tensor(query_data)
         self.query_sijs = query_sijs
         
     

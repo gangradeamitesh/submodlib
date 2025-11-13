@@ -121,6 +121,27 @@ class FacilityLocation(BaseFunction):
         gain_tensor = torch.maximum(new_similarities - self.similarity_with_nearest_in_effective_x, torch.tensor(0.0))
         gain = torch.sum(gain_tensor).item()
         return gain
+    
+    def batchedGain(self, selected_mask):
+        remaining = (~selected_mask).nonzero(as_tuple=False).flatten()
+        if remaining.numel() == 0:
+            return torch.tensor(0.0, device=self.device), torch.tensor(-1, device=self.device)
+
+        memo = self.similarity_with_nearest_in_effective_x.unsqueeze(1) 
+        candidates = self.sijs[:, remaining]                              
+
+        new_best = torch.maximum(memo, candidates)
+        gains = (new_best - memo).sum(dim=0)                              
+        best_gain, rel_idx = gains.max(dim=0)
+        best_idx = remaining[rel_idx]
+
+        return best_gain, best_idx
+    
+    def updateBatchMemo(self, element):
+        candidate = self.sijs[:, element]                          # similarities s_{i, element}
+        self.similarity_with_nearest_in_effective_x = torch.maximum(
+            self.similarity_with_nearest_in_effective_x, candidate
+        )
 
     def evaluateWithMemoization(self, evaluate_set):
         """
@@ -170,3 +191,23 @@ class FacilityLocation(BaseFunction):
         This matches the C++ implementation.
         """
         return self.effective_ground_set  # Return a copy to prevent external modification
+    
+
+if __name__ == "__main__":
+    
+    data = torch.randn(1000, 1024 ,dtype=torch.float16)
+    query = torch.randn(800, 1024 , dtype=torch.float16)
+    obj = FacilityLocation(n=data.shape[0],data=data , metric="cosine")
+
+    greedy_list = obj.maximize(optimizer="NaiveGreedy" , budget=BUDGET , stopIfZeroGain=False , stopIfNegativeGain =False, epsilon=False , verbose=False , show_progress=False , costs=None , costSensitiveGreedy=False)
+    print("---------------")
+    print(greedy_list)
+
+
+    print("C++ --------------------")
+    # obj = FacilityLocationFunction(n=data.shape[0], data=data, 
+    #                                                 metric="cosine", 
+    #                                                )
+    # greedyList = obj.maximize(budget=10,optimizer='NaiveGreedy', stopIfZeroGain=False, 
+    #                           stopIfNegativeGain=False, verbose=False)
+    # print(greedyList)

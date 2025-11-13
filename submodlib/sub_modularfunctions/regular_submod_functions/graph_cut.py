@@ -4,7 +4,8 @@ from submodlib.sub_modularfunctions.optimizers.optimizer_factory import Optimize
 import torch
 from submodlib.sub_modularfunctions.userValidator import validate_n, validate_mode, validate_sep_rep , validate_sijs
 from submodlib.sub_modularfunctions.cal_simi_kernel import DenseSimilarity
-from submodlib import GraphCutFunction
+import numpy as np
+
 
 """TODO: To implement the lambda functionlity for graph cut"""
 class GraphCut(BaseFunction):
@@ -58,7 +59,10 @@ class GraphCut(BaseFunction):
     def _initialize_memoization(self):
         """Initialize memoization structures"""
         
-        self.similarity_with_nearest_in_effective_x = self._tensor(torch.zeros(self.n, dtype=torch.float32))
+        #self.similarity_with_nearest_in_effective_x = self._tensor(torch.zeros(self.n, dtype=torch.float32))
+        self.total_similarity_with_master = self.sijs.sum(dim=0) 
+        self.total_similarity_with_subset = torch.zeros(self.n , device=self.device)
+        self.self_sim = self.sijs.diagonal().clone()
         self.memoization_initialized = True
     def _initialize_ground_sets(self):
         """Initialize effective ground set and master set like C++ version"""
@@ -93,7 +97,6 @@ class GraphCut(BaseFunction):
         diversity_term = self.sijs[X_tensor][: ,X_tensor].sum()
         return representation_term - self.lambda_val * diversity_term
 
-
     
     def marginalGainWithMemoization(self , X , element):
         """Compute the marginal gain of adding an element to the set with memoization"""
@@ -107,6 +110,23 @@ class GraphCut(BaseFunction):
         gain_tensor = torch.maximum(new_similarities - self.similarity_with_nearest_in_effective_x, torch.tensor(0.0))
         gain = torch.sum(gain_tensor).item()
         return gain
+    
+    def batchedGain(self ,selected_mask):
+        remaining = (~selected_mask).nonzero(as_tuple=False).flatten()
+        if remaining.numel()==0:
+            return torch.tensor(0.0,device=self.device) , torch.tensor(-1, device=self.device)
+        master_term = self.total_similarity_with_master[remaining]
+        subset_term = self.total_similarity_with_subset[remaining]
+        diag_term = self.self_sim[remaining]
+        gains = master_term - 2 * self.lambda_val * subset_term - self.lambda_val * diag_term
+        best_gain , rel_idx = gains.max(dim=0)
+        best_idx = remaining[rel_idx]
+        return best_gain , best_idx
+    
+    def updateBatchMemo(self , ele):
+        self.total_similarity_with_subset += self.sijs[:,ele]
+
+        
     
     def evaluateWithMemoization(self , evaluate_set):
         """Evaluate the function on the given set with memoization"""

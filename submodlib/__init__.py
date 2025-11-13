@@ -1,8 +1,8 @@
 # __init__.py
 # Author: Vishal Kaushal <vishal.kaushal@gmail.com>
 from .version import __version__
-from .sub_modularfunctions.regular_submod_functions import FacilityLocation
-#from .sub_modularfunctions.regular_submod_functions import GraphCut
+from .sub_modularfunctions.regular_submod_functions.facility_location import FacilityLocation
+from .sub_modularfunctions.regular_submod_functions.graph_cut import GraphCut
 from .sub_modularfunctions.mutual_info_functions.FLMI import FacilityLocationMutualInformation
 from .sub_modularfunctions.mutual_info_functions.FLVMI import FacilityLocationVariantMutualInformation
 from .functions import FacilityLocationFunction

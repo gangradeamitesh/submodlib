@@ -4,8 +4,12 @@ from vectorized_greedy import maximize_function
 
 # from submodlib import FacilityLocationVariantMutualInformationFunction
 # from submodlib import FacilityLocationVariantMutualInformation
-from submodlib import FacilityLocationMutualInformation
-from submodlib import FacilityLocationMutualInformationFunction
+# from submodlib import FacilityLocationMutualInformation
+# from submodlib import FacilityLocationMutualInformationFunction
+from submodlib import FacilityLocationFunction
+from submodlib import FacilityLocation
+from submodlib import GraphCutFunction
+from submodlib import GraphCut
 
 # data_dict = torch.load("p3_data_dict.pt")
 # device = ("cuda" if torch.cuda.is_available() else "cpu")
@@ -93,17 +97,17 @@ def main():
 if __name__ == "__main__":
     
 
-    obj = FacilityLocationMutualInformation(n=data.shape[0], num_queries=query.shape[0], magnificationEta=1.0 ,data=data , query_data=query, metric="cosine")
+    obj = GraphCut(n=data.shape[0],data=data , metric="cosine" , lambda_val=0.1)
 
-    greedy_list = obj.maximize(optimizer="NaiveGreedy" , budget=BUDGET , stopIfZeroGain=False , stopIfNegativeGain =False, epsilon=False , verbose=False , show_progress=False , costs=None , costSensitiveGreedy=False)
+    greedy_list = obj.maximize(optimizer="NaiveGreedy" , budget=5 , stopIfZeroGain=False , stopIfNegativeGain =False, epsilon=False , verbose=False , show_progress=False , costs=None , costSensitiveGreedy=False)
     print("---------------")
     print(greedy_list)
 
 
     print("C++ --------------------")
-    obj = FacilityLocationMutualInformationFunction(n=data.shape[0], num_queries=query.shape[0], data=data, 
-                                                    queryData=query, metric="cosine", 
-                                                    magnificationEta=1.0)
-    greedyList = obj.maximize(budget=10,optimizer='NaiveGreedy', stopIfZeroGain=False, 
+    obj = GraphCutFunction(n=data.shape[0], data=data, 
+                                                    metric="cosine", 
+                                                   mode = "dense",lambdaVal=0.1)
+    greedyList = obj.maximize(budget=5,optimizer='NaiveGreedy', stopIfZeroGain=False, 
                               stopIfNegativeGain=False, verbose=False)
     print(greedyList)
