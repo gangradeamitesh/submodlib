@@ -36,10 +36,6 @@ class NaiveGreedy(BaseOptimizer):
         # Initialize
         selected = torch.zeros(function.n , dtype=torch.bool, device=function.device)
         selected_pairs = []
-        ground_set = function.getEffectiveGroundSet()
-        if isinstance(ground_set, torch.Tensor):
-            ground_set = ground_set.tolist()
-        
         # # Initialize memoization for the empty set
         # function.setMemoization(selected)
 

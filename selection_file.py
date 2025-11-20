@@ -97,17 +97,73 @@ def main():
 if __name__ == "__main__":
     
 
-    obj = GraphCut(n=data.shape[0],data=data , metric="cosine" , lambda_val=0.1)
+    import numpy as np
+    import matplotlib.pyplot as plt
+    groundData =np.array( [(3,12.5), (5,13.5), (5.5,13.5), (14.5,13.5), (15,13.5), (15.5,13.5),
+    (4.5,13), (5,13), (5.5,13), (14.5,13), (15,13), (15.5,13),
+    (4.5,12.5), (5,12.5), (5.5,12.5), (14.5,12.5), (15,12.5), (15.5,12.5),
+    (4.5,7.5), (5,7.5), (5.5,7.5), (14.5,7.5), (15,7.5), (15.5,7.5),
+    (4.5,7), (5,7), (5.5,7), (14.5,7), (15,7), (15.5,7),
+    (4.5,6.5), (5,6.5), (5.5,6.5), (14.5,6.5), (15,6.5), (7.5,10), (12.5,10), (10,12.5), 
+    (10,7.5), (8,12.5), (8,7.5), (14,12.5), (14,7.5), (4.5, 15.5), (5,9.5), (5,10.5)] )
+    print("Number of elements in ground set = ", len(groundData))
+    groundxs = [x[0] for x in groundData]
+    groundys = [x[1] for x in groundData]
 
-    greedy_list = obj.maximize(optimizer="NaiveGreedy" , budget=5 , stopIfZeroGain=False , stopIfNegativeGain =False, epsilon=False , verbose=False , show_progress=False , costs=None , costSensitiveGreedy=False)
-    print("---------------")
-    print(greedy_list)
+    mutlipleQueryData = np.array([(4.5,13.5), (15.5,6.5)])
+    multiplequeryxs = [x[0] for x in mutlipleQueryData]
+    multiplequeryys = [x[1] for x in mutlipleQueryData]
 
+    mutlipleQueryData2 = np.array([(4.5,13.5), (15.5,11)])
+    multiplequeryxs2 = [x[0] for x in mutlipleQueryData2]
+    multiplequeryys2 = [x[1] for x in mutlipleQueryData2]
 
-    print("C++ --------------------")
-    obj = GraphCutFunction(n=data.shape[0], data=data, 
-                                                    metric="cosine", 
-                                                   mode = "dense",lambdaVal=0.1)
-    greedyList = obj.maximize(budget=5,optimizer='NaiveGreedy', stopIfZeroGain=False, 
-                              stopIfNegativeGain=False, verbose=False)
-    print(greedyList)
+    singleQueryData = np.array([(4.5,13.5)])
+    singlequeryxs = [x[0] for x in singleQueryData]
+    singlequeryys = [x[1] for x in singleQueryData]
+
+    from submodlib import FacilityLocationConditionalGainFunction
+    from submodlib import FacilityLocationConditionalGain
+
+    nus = [0, 0.3, 0.6, 1, 1.4, 1.8, 2.2, 2.6, 3, 10, 50, 100]
+    row = 0
+    index = 1
+    plt.figure(figsize = (16, 16))
+    for nu in nus:
+        print("C++ ------------------------------")
+        obj = FacilityLocationConditionalGainFunction(n=46, 
+                                            num_privates=1, 
+                                            data=groundData,
+                                            privateData=singleQueryData,
+                                            metric="cosine", 
+                                            privacyHardness=nu)
+        greedyList = obj.maximize(budget=10,optimizer='NaiveGreedy', stopIfZeroGain=False, 
+                                stopIfNegativeGain=False, verbose=False)
+        greedyXs = [groundxs[x[0]] for x in greedyList]
+        greedyYs = [groundys[x[0]] for x in greedyList]
+        print("Pytorch --------------------------------")
+
+        obj2 = FacilityLocationConditionalGain(n=46, 
+                                            num_privates=1, 
+                                            data=groundData,
+                                            privateData=singleQueryData,
+                                            metric="cosine", 
+                                            privacyHardness=nu)
+        greedyList2 = obj2.maximize(budget=10,optimizer='NaiveGreedy', stopIfZeroGain=False, 
+                                stopIfNegativeGain=False, verbose=False)
+        idxs_cpp = torch.tensor([p[0] for p in greedyList], dtype=torch.long)
+        idxs_py  = torch.tensor([p[0] for p in greedyList2], dtype=torch.long)
+
+# gains may be floats or 0-d tensors in different dtypes
+        gains_cpp = torch.tensor([float(p[1]) for p in greedyList], dtype=torch.float32)
+        gains_py  = torch.tensor([float(p[1]) for p in greedyList2], dtype=torch.float32)
+
+        same_indices = torch.equal(idxs_cpp, idxs_py)
+        same_gains = torch.allclose(gains_cpp, gains_py, rtol=1e-5, atol=1e-7)
+
+        print("indices match:", same_indices)
+        print("gains match:", same_gains)
+        if not same_indices or not same_gains:
+            for i, (c, p) in enumerate(zip(greedyList, greedyList2)):
+                print(f"{i}: C++ {c}, PyTorch {p}")
+    

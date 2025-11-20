@@ -131,14 +131,14 @@ class FacilityLocation(BaseFunction):
         candidates = self.sijs[:, remaining]                              
 
         new_best = torch.maximum(memo, candidates)
-        gains = (new_best - memo).sum(dim=0)                              
+        gains = (new_best - memo).sum(dim=0)                  
         best_gain, rel_idx = gains.max(dim=0)
         best_idx = remaining[rel_idx]
 
         return best_gain, best_idx
     
     def updateBatchMemo(self, element):
-        candidate = self.sijs[:, element]                          # similarities s_{i, element}
+        candidate = self.sijs[:, element]
         self.similarity_with_nearest_in_effective_x = torch.maximum(
             self.similarity_with_nearest_in_effective_x, candidate
         )
@@ -153,16 +153,13 @@ class FacilityLocation(BaseFunction):
         
         return torch.sum(self.similarity_with_nearest_in_effective_x).item()
 
-    def updateMemoization(self, X, element):
+    def updateMemoization(self, element):
         """
         Update memoization for the given set X.
         This is called after each greedy selection.
         """
-        if not self.memoization_initialized or element in X:
-            return
-        element_tensor = self._tensor(element, dtype=torch.long)
-        new_similarity = self.sijs[:, element_tensor]
-        torch.maximum(new_similarity, self.similarity_with_nearest_in_effective_x, out=self.similarity_with_nearest_in_effective_x)
+        candidate = self.sijs[:, element]
+        torch.maximum(candidate, self.similarity_with_nearest_in_effective_x, out=self.similarity_with_nearest_in_effective_x)
         
 
     def clearMemoization(self):
