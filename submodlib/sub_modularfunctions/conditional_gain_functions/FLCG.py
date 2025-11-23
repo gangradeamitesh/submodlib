@@ -40,7 +40,8 @@ class FacilityLocationConditionalGain:
         if self.metric == "cosine":
              self.private_sijs = DenseSimilarity.cosine_similarity(self.data , self.privateData)
         self.private_set = None
-        self.private_sim = self.privacyHardness * self.private_sijs.max(dim=0).values
+        # match C++: each ground element gets its own penalty = nu * max similarity to any private point
+        self.private_sim = self.privacyHardness * self.private_sijs.max(dim=1).values
         self._initialize_ground_sets()
         self._initialize_memoization()
 
@@ -82,9 +83,10 @@ class FacilityLocationConditionalGain:
     
     def updateBatchMemo(self, element):
         candidate = self.data_sijs[:, element]
+        # memo stores raw max similarities; privacy term is applied only when computing gains
         self.similarity_with_nearest_in_effective_x = torch.maximum(
             self.similarity_with_nearest_in_effective_x, candidate
-        ) - self.privacyHardness * self.private_sim
+        )
     def getEffectiveGroundSet(self):
         """Get the effective ground set"""
         return self.effective_ground_set
