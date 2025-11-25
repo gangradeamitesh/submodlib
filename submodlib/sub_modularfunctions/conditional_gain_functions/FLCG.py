@@ -40,7 +40,6 @@ class FacilityLocationConditionalGain:
         if self.metric == "cosine":
              self.private_sijs = DenseSimilarity.cosine_similarity(self.data , self.privateData)
         self.private_set = None
-        # match C++: each ground element gets its own penalty = nu * max similarity to any private point
         self.private_sim = self.privacyHardness * self.private_sijs.max(dim=1).values
         self._initialize_ground_sets()
         self._initialize_memoization()

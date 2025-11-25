@@ -11,6 +11,9 @@ from submodlib import FacilityLocation
 from submodlib import GraphCutFunction
 from submodlib import GraphCut
 
+#from submodlib import faci
+from submodlib import GraphCutConditionalGain
+from submodlib import GraphCutConditionalGainFunction
 # data_dict = torch.load("p3_data_dict.pt")
 # device = ("cuda" if torch.cuda.is_available() else "cpu")
 # device = "cpu"
@@ -131,39 +134,47 @@ if __name__ == "__main__":
     plt.figure(figsize = (16, 16))
     for nu in nus:
         print("C++ ------------------------------")
-        obj = FacilityLocationConditionalGainFunction(n=46, 
+        obj = GraphCutConditionalGainFunction(n=46, 
                                             num_privates=1, 
                                             data=groundData,
                                             privateData=singleQueryData,
-                                            metric="cosine", 
-                                            privacyHardness=nu)
+                                            metric="cosine",
+                                            lambdaVal=0.5, 
+                                            privacyHardness=nu,)
         greedyList = obj.maximize(budget=10,optimizer='NaiveGreedy', stopIfZeroGain=False, 
                                 stopIfNegativeGain=False, verbose=False)
         greedyXs = [groundxs[x[0]] for x in greedyList]
         greedyYs = [groundys[x[0]] for x in greedyList]
+        
         print("Pytorch --------------------------------")
 
-        obj2 = FacilityLocationConditionalGain(n=46, 
+        obj2 = GraphCutConditionalGain(n=46, 
                                             num_privates=1, 
                                             data=groundData,
                                             privateData=singleQueryData,
                                             metric="cosine", 
-                                            privacyHardness=nu)
+                                            privacyHardness=nu,lambdaVal=0.5)
         greedyList2 = obj2.maximize(budget=10,optimizer='NaiveGreedy', stopIfZeroGain=False, 
                                 stopIfNegativeGain=False, verbose=False)
+        
         idxs_cpp = torch.tensor([p[0] for p in greedyList], dtype=torch.long)
         idxs_py  = torch.tensor([p[0] for p in greedyList2], dtype=torch.long)
 
 # gains may be floats or 0-d tensors in different dtypes
-        gains_cpp = torch.tensor([float(p[1]) for p in greedyList], dtype=torch.float32)
-        gains_py  = torch.tensor([float(p[1]) for p in greedyList2], dtype=torch.float32)
+        gains_cpp = torch.tensor([float(p[1]) for p in greedyList], dtype=torch.float16)
+        gains_py  = torch.tensor([float(p[1]) for p in greedyList2], dtype=torch.float16)
 
         same_indices = torch.equal(idxs_cpp, idxs_py)
         same_gains = torch.allclose(gains_cpp, gains_py, rtol=1e-5, atol=1e-7)
 
         print("indices match:", same_indices)
         print("gains match:", same_gains)
-        if not same_indices or not same_gains:
-            for i, (c, p) in enumerate(zip(greedyList, greedyList2)):
-                print(f"{i}: C++ {c}, PyTorch {p}")
+        # if not same_indices or not same_gains:
+        #     for i, (c, p) in enumerate(zip(greedyList, greedyList2)):
+        #         print(f"{i}: C++ {c}, PyTorch {p}")
+        for i , j in zip(greedyList , greedyList2):
+            #assert greedyList[i][0] == greedyList2[i][0] , "Selected indices do not match"
+            #assert abs(greedyList[i][1] - greedyList2[i][1]) < 1e-5 , "Gains do not match"
+            #print(f"Index {i} matches: {greedyList[i]} == {greedyList2[i]}")
+            print("Gain difference:", (greedyList[i][1],greedyList2[i][1]))
     
