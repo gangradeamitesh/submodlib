@@ -33,11 +33,8 @@ class NaiveGreedy(BaseOptimizer):
         if verbose:
             print(f"Starting Naive Greedy optimization with budget {budget}")
         
-        # Initialize
         selected = torch.zeros(function.n , dtype=torch.bool, device=function.device)
         selected_pairs = []
-        # # Initialize memoization for the empty set
-        # function.setMemoization(selected)
 
         iterator = range(budget)
         progress = None
@@ -52,63 +49,10 @@ class NaiveGreedy(BaseOptimizer):
         for iteration in iterator:
             if verbose:
                 print(f"Iteration {iteration + 1}/{budget}")
-                        
-            # for element in ground_set:
-            #     if element in selected:
-            #         continue
-                
-            #     """TODO: This is commented memoization code, to be revisited later"""
-            #     # Use memoized marginal gain if available
-            #     if hasattr(function, 'marginalGainWithMemoization'):
-            #         gain = function.marginalGainWithMemoization(selected, element)
-            #     else:
-            #         gain = function.marginalGain(selected, element)
-                
-            #     if gain >= best_gain:
-            #         best_gain = gain
-            #         best_element = element
-            #         """TODO: This is a temporary fix to return gain along with element"""
-            #         output_pair = (element, gain) 
-
-            """Vectorized the Naive Greedy"""
             best_gain , best_idx = function.batchedGain(selected)
             best_idx = int(best_idx.item())
             selected[best_idx] = True
             selected_pairs.append((best_idx , best_gain))
             function.updateBatchMemo(best_idx)
             
-            # if best_element is None:
-            #     if verbose:
-            #         print("No more elements to select")
-            #     break
-            
-            # if stopIfZeroGain and best_gain <= 0:
-            #     if verbose:
-            #         print(f"Stopping: marginal gain is {best_gain} (zero or negative)")
-            #     break
-            
-            # if stopIfNegativeGain and best_gain < 0:
-            #     if verbose:
-            #         print(f"Stopping: marginal gain is {best_gain} (negative)")
-            #     break
-            
-
-            """TODO: This is commented memoization code, to be revisited later"""
-            # if hasattr(function, 'updateMemoization'):
-            #     function.updateMemoization(selected , best_element)
-            # selected.add(best_element)
-            # selected_pairs.add(output_pair)
-            # if progress is not None:
-            #     progress.set_postfix({"gain": float(best_gain)})
-            # if verbose:
-            #     current_value = function.evaluateWithMemoization(selected) if hasattr(function, 'evaluateWithMemoization') else function.evaluate(selected)
-            #     print(f"Selected element {best_element} with gain {best_gain:.4f}, current value: {current_value:.4f}")
-        
-        # if progress is not None:
-        #     progress.close()
-
-        # if verbose:
-        #     final_value = function.evaluateWithMemoization(selected) if hasattr(function, 'evaluateWithMemoization') else function.evaluate(selected)
-        #     print(f"Optimization complete. Selected {len(selected)} elements with final value: {final_value:.4f}")
-        
         return selected_pairs

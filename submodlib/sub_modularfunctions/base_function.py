@@ -4,7 +4,7 @@ from submodlib.runtime import get_default_device
 
 class BaseFunction(ABC):
 
-    def __init__(self,n , mode="dense",sijs=None,data=None,num_clusters=None,cluster_label=None,metric=None,cluster_labels=None,query_data=None,query_sijs=None , device = None) -> None:
+    def __init__(self,n , mode="dense",sijs=None,data=None,num_clusters=None,cluster_label=None,metric="cosine",cluster_labels=None,query_data=None,query_sijs=None , device = None) -> None:
         self.device = torch.device(device) if device else get_default_device()
         self.n = n
         self.mode = mode
@@ -16,7 +16,7 @@ class BaseFunction(ABC):
         self.cluster_labels = cluster_labels
         self.num_clusters = num_clusters
         self.sijs = sijs
-        if query_data != None:
+        if query_data is not None:
             self.query_data = self._tensor(query_data)
         self.query_sijs = query_sijs
         

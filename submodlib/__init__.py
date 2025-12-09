@@ -7,6 +7,7 @@ from .sub_modularfunctions.mutual_info_functions.FLMI import FacilityLocationMut
 from .sub_modularfunctions.mutual_info_functions.FLVMI import FacilityLocationVariantMutualInformation
 from .sub_modularfunctions.conditional_gain_functions.FLCG import FacilityLocationConditionalGain
 from .sub_modularfunctions.conditional_gain_functions.GCCG import GraphCutConditionalGain
+from .sub_modularfunctions.mutual_info_functions.LOGDETMI import LogDeterminantMutualInformation
 from .functions import FacilityLocationFunction
 from .functions import GraphCutFunction
 from .functions import SetCoverFunction
