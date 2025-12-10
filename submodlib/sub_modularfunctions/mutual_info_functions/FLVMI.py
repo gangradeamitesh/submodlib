@@ -7,7 +7,7 @@ import numpy as np
 
 class FacilityLocationVariantMutualInformation(BaseFunction):
     def __init__(self, n , num_queries , query_sijs=None,
-                 data=None, query_data=None, metric="cosine", queryDiversityEta=1):
+                 data=None, queryData=None, metric="cosine", queryDiversityEta=1,device=None):
         """
         Initializes the Facility Location Mutual Information Function.
 
@@ -17,7 +17,7 @@ class FacilityLocationVariantMutualInformation(BaseFunction):
         - num_neighbors: Number of neighbors to consider for mutual information calculation.
         """
 
-        super().__init__(n=n, data=data, metric=metric,query_data=query_data,query_sijs=query_sijs)
+        super().__init__(n=n, data=data, metric=metric,query_data=queryData,query_sijs=query_sijs , device=device)
         self.queryDiversityEta = queryDiversityEta
         self.effective_ground_set = None
         self.num_queries = num_queries
