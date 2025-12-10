@@ -11,8 +11,119 @@ from submodlib import GraphCutConditionalGain
 from submodlib import GraphCutConditionalGainFunction
 from submodlib import FacilityLocationVariantMutualInformation
 from submodlib import FacilityLocationVariantMutualInformationFunction
+from submodlib import LogDeterminantMutualInformationFunction
+from submodlib import LogDeterminantMutualInformation
+from submodlib import FacilityLocationConditionalGainFunction
+from submodlib import FacilityLocationConditionalGain
+import time
+
+def compare_flmi(ground_data, query_data, budget):
+    # C++ Implementation
+    flmi_cpp = FacilityLocationVariantMutualInformationFunction(n=ground_data.shape[0],
+                                                               num_queries=query_data.shape[0],
+                                                               data=ground_data,
+                                                               queryData=query_data,
+                                                               metric="cosine")
+    start_cpp = time.perf_counter()
+    greedy_cpp = flmi_cpp.maximize(budget=budget, optimizer='NaiveGreedy', stopIfZeroGain=False,
+                                   stopIfNegativeGain=False, verbose=False)
+    elapsed_cpp = time.perf_counter() - start_cpp
+    print(f"C++ FLVMI Time: {elapsed_cpp:.4f} seconds")
+    # PyTorch Implementation
+    flmi_torch = FacilityLocationVariantMutualInformation(n=ground_data.shape[0],
+                                                          num_queries=query_data.shape[0],
+                                                          data=ground_data,
+                                                          queryData=query_data,
+                                                          metric="cosine")
+    start_py = time.perf_counter()
+    greedy_torch = flmi_torch.maximize(budget=budget, optimizer='NaiveGreedy', stopIfZeroGain=False,
+                                       stopIfNegativeGain=False, verbose=False)
+    elapsed_torch = time.perf_counter() - start_py
+    
+    # Compare results
+    indices_cpp = [item[0] for item in greedy_cpp]
+    indices_torch = [item[0] for item in greedy_torch]
+
+    gains_cpp = [item[1] for item in greedy_cpp]
+    gains_torch = [item[1] for item in greedy_torch]
+
+    indices_match = indices_cpp == indices_torch
+    gains_match = all(abs(a - b) < 1e-5 for a, b in zip(gains_cpp, gains_torch))
+
+    return indices_match, gains_match
+    
+def compare_logdetmi(ground_data, query_data, budget):
+    # C++ Implementation
+    logdetmi_cpp = LogDeterminantMutualInformationFunction(n=ground_data.shape[0],
+                                                   num_queries=query_data.shape[0],
+                                                   data=ground_data,
+                                                   queryData=query_data,
+                                                   metric="cosine",lambdaVal=1.0,magnificationEta=1)
+    greedy_cpp = logdetmi_cpp.maximize(budget=budget, optimizer='NaiveGreedy', stopIfZeroGain=False,
+                                       stopIfNegativeGain=False, verbose=False)
+    print("C++ Implementation Completed")
+    print("PyTorch Implementation Starting")
+    # PyTorch Implementation
+    logdetmi_torch = LogDeterminantMutualInformation(n=ground_data.shape[0],
+                                                     num_queries=query_data.shape[0],
+                                                     data=ground_data,
+                                                     queryData=query_data,
+                                                     metric="cosine",lambdaVal=1.0,magnificationEta=1)
+    greedy_torch = logdetmi_torch.maximize(budget=budget, optimizer='NaiveGreedy', stopIfZeroGain=False,
+                                           stopIfNegativeGain=False, verbose=False , show_progress=False,epsilon=1e-5,costs=None,costSensitiveGreedy=False)
+
+    # Compare results
+    print("C++ Implementation Results:")
+    print(greedy_cpp)
+    print("PyTorch Implementation Results:")
+    print(greedy_torch)
+    indices_cpp = [item[0] for item in greedy_cpp]
+    indices_torch = [item[0] for item in greedy_torch]
+
+    gains_cpp = [item[1] for item in greedy_cpp]
+    gains_torch = [item[1] for item in greedy_torch]
+
+    indices_match = indices_cpp == indices_torch
+    gains_match = all(abs(a - b) < 1e-5 for a, b in zip(gains_cpp, gains_torch))
+
+    return indices_match, gains_match
+
+def compare_flcg(groundData , queryData , budget):
+    # C++ Implementation
+    flcg_cpp = FacilityLocationConditionalGainFunction(n=groundData.shape[0],
+                                                      num_privates=queryData.shape[0],
+                                                      data=groundData,
+                                                      privateData=queryData,
+                                                      metric="cosine")
+                                    
+    greedy_cpp = flcg_cpp.maximize(budget=budget, optimizer='NaiveGreedy', stopIfZeroGain=False,
+                                   stopIfNegativeGain=False, verbose=False)
+
+    # PyTorch Implementation
+    flcg_torch = FacilityLocationConditionalGain(n=groundData.shape[0],
+                                                 num_privates=queryData.shape[0],
+                                                 data=groundData,
+                                                 privateData=queryData,
+                                                 metric="cosine")
+    greedy_torch = flcg_torch.maximize(budget=budget, optimizer='NaiveGreedy', stopIfZeroGain=False,
+                                       stopIfNegativeGain=False, verbose=False , show_progress=False,epsilon=1e-5,costs=None,costSensitiveGreedy=False)
 
     
+    print("C++ Implementation Results:")
+    print(greedy_cpp)
+    print("PyTorch Implementation Results:")
+    print(greedy_torch)
+
+    indices_cpp = [item[0] for item in greedy_cpp]
+    indices_torch = [item[0] for item in greedy_torch]
+
+    gains_cpp = [item[1] for item in greedy_cpp]
+    gains_torch = [item[1] for item in greedy_torch]
+
+    indices_match = indices_cpp == indices_torch
+    gains_match = all(abs(a - b) < 1e-5 for a, b in zip(gains_cpp, gains_torch))
+
+    return indices_match, gains_match
 
 if __name__ == "__main__":
     
@@ -21,83 +132,40 @@ if __name__ == "__main__":
         print("Using GPU")
     else:
         print("Using CPU")
-    import numpy as np
-    import matplotlib.pyplot as plt
-    # groundData =np.array( [(3,12.5), (5,13.5), (5.5,13.5), (14.5,13.5), (15,13.5), (15.5,13.5),
-    # (4.5,13), (5,13), (5.5,13), (14.5,13), (15,13), (15.5,13),
-    # (4.5,12.5), (5,12.5), (5.5,12.5), (14.5,12.5), (15,12.5), (15.5,12.5),
-    # (4.5,7.5), (5,7.5), (5.5,7.5), (14.5,7.5), (15,7.5), (15.5,7.5),
-    # (4.5,7), (5,7), (5.5,7), (14.5,7), (15,7), (15.5,7),
-    # (4.5,6.5), (5,6.5), (5.5,6.5), (14.5,6.5), (15,6.5), (7.5,10), (12.5,10), (10,12.5), 
-    # (10,7.5), (8,12.5), (8,7.5), (14,12.5), (14,7.5), (4.5, 15.5), (5,9.5), (5,10.5)] )
-    # print("Number of elements in ground set = ", len(groundData))
-    # groundxs = [x[0] for x in groundData]
-    # groundys = [x[1] for x in groundData]
-
-    # mutlipleQueryData = np.array([(4.5,13.5), (15.5,6.5)])
-    # multiplequeryxs = [x[0] for x in mutlipleQueryData]
-    # multiplequeryys = [x[1] for x in mutlipleQueryData]
-
-    # mutlipleQueryData2 = np.array([(4.5,13.5), (15.5,11)])
-    # multiplequeryxs2 = [x[0] for x in mutlipleQueryData2]
-    # multiplequeryys2 = [x[1] for x in mutlipleQueryData2]
-
-    # singleQueryData = np.array([(4.5,13.5)])
-    # singlequeryxs = [x[0] for x in singleQueryData]
-    # singlequeryys = [x[1] for x in singleQueryData]
-
-    # from submodlib import FacilityLocationConditionalGainFunction
-    # from submodlib import FacilityLocationConditionalGain
-
-    groundData = torch.randn(100000,1024)
-    singleQueryData = torch.randn(800,1024)
-
-    #nus = [0, 0.3, 0.6, 1, 1.4, 1.8, 2.2, 2.6, 3, 10, 50, 100]
-    nus = [0.3]
-    row = 0
-    index = 1
-    plt.figure(figsize = (16, 16))
-    for nu in nus:
-        print("C++ ------------------------------")
-        # obj = FacilityLocationVariantMutualInformationFunction(n=groundData.shape[0], 
-        #                                     num_queries=singleQueryData.shape[0],
-        #                                     data=groundData,
-        #                                     queryData=singleQueryData,
-        #                                     metric="cosine",
-                                            
-        #                                     queryDiversityEta=nu,)
-        # greedyList = obj.maximize(budget=10,optimizer='NaiveGreedy', stopIfZeroGain=False, 
-        #                         stopIfNegativeGain=False, verbose=False)
-        # print(greedyList)
-        
-        print("Pytorch --------------------------------")
-
-        obj2 = FacilityLocationVariantMutualInformation(n=groundData.shape[0], 
-                                            num_queries=singleQueryData.shape[0], 
-                                            data=groundData,
-                                            query_data=singleQueryData,
-                                            metric="cosine", 
-                                            queryDiversityEta=nu)
-        greedyList2 = obj2.maximize(budget=10,optimizer='NaiveGreedy', stopIfZeroGain=False, 
-                                stopIfNegativeGain=False, verbose=False)
-        print(greedyList2)
-        idxs_cpp = torch.tensor([p[0] for p in greedyList], dtype=torch.long)
-        idxs_py  = torch.tensor([p[0] for p in greedyList2], dtype=torch.long)
-
-        gains_cpp = torch.tensor([float(p[1]) for p in greedyList], dtype=torch.float16)
-        gains_py  = torch.tensor([float(p[1]) for p in greedyList2], dtype=torch.float16)
-
-        same_indices = torch.equal(idxs_cpp, idxs_py)
-        same_gains = torch.allclose(gains_cpp, gains_py, rtol=1e-5, atol=1e-7)
-
-        print("indices match:", same_indices)
-        print("gains match:", same_gains)
-        # if not same_indices or not same_gains:
-        #     for i, (c, p) in enumerate(zip(greedyList, greedyList2)):
-        #         print(f"{i}: C++ {c}, PyTorch {p}")
-        # for i , j in zip(greedyList , greedyList2):
-        #     #assert greedyList[i][0] == greedyList2[i][0] , "Selected indices do not match"
-        #     #assert abs(greedyList[i][1] - greedyList2[i][1]) < 1e-5 , "Gains do not match"
-        #     #print(f"Index {i} matches: {greedyList[i]} == {greedyList2[i]}")
-        #     print("Gain difference:", (greedyList[i][1],greedyList2[i][1]))
+    free , total = torch.cuda.mem_get_info()
+    gb = 1024 ** 3
+    print(f"Free memory: {free / gb:.2f} GB")
+    print(f"Total memory: {total / gb:.2f} GB")
+    groundData = torch.randn(50000,1024)
+    singleQueryData = torch.randn(80,1024)
+    budget = 500
+    #130000
+    """Compare C++ and PyTorch implementations of FacilityLocationVariantMutualInformation"""
+    # indices_match, gains_match = compare_flmi(groundData, singleQueryData, budget)
+    # print("\n")
+    # print("Indices match:", indices_match) 
+    # print("Gains match:", gains_match)
     
+    """Compare C++ and PyTorch implementations of LOGDETMI"""
+    
+    # indices_match, gains_match = compare_logdetmi(groundData, singleQueryData, budget)
+    # print("Indices match:", indices_match)
+    # print("Gains match:", gains_match) 
+    logdetmi_torch = LogDeterminantMutualInformation(n=groundData.shape[0],
+                                                     num_queries=singleQueryData.shape[0],
+                                                     data=groundData,
+                                                     queryData=singleQueryData,
+                                                     metric="cosine",lambdaVal=1.0,magnificationEta=1)
+    free , total = torch.cuda.mem_get_info()
+    gb = 1024 ** 3
+    print(f"Free memory: {free / gb:.2f} GB")
+    print(f"Total memory: {total / gb:.2f} GB")
+    # greedy_torch = logdetmi_torch.maximize(budget=budget, optimizer='NaiveGreedy', stopIfZeroGain=False,
+    #                                        stopIfNegativeGain=False, verbose=False , show_progress=False,epsilon=1e-5,costs=None,costSensitiveGreedy=False)
+    # print(greedy_torch)
+
+    """Compare C++ and PyTorch implementations of FacilityLocationConditionalGain"""
+    # indices_match, gains_match = compare_flcg(groundData, singleQueryData, budget)
+    # print("\n")
+    # print("Indices match:", indices_match)
+    # print("Gains match:", gains_match)

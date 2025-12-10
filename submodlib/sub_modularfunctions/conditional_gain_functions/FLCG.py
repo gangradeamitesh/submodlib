@@ -6,11 +6,12 @@ import torch
 import numpy as np
 from submodlib.runtime import get_default_device
 
-class FacilityLocationConditionalGain:
+class FacilityLocationConditionalGain(BaseFunction):
     
     def __init__(self, n=None, num_privates=None, data_sijs=None,private_sijs=None, data=None,
                  privateData=None, metric="cosine" , privacyHardness=1 , device = None):
         
+        super().__init__(n=n, mode="dense",sijs=data_sijs,data=data,metric="cosine",query_data=privateData,query_sijs=private_sijs)
         self.n = n
         self.num_privates = num_privates
         self.data_sijs = data_sijs
@@ -25,16 +26,16 @@ class FacilityLocationConditionalGain:
 
         if self.data is None:
                 raise Exception("ERROR: Data matrix not provided")
-        if isinstance(self.data, np.ndarray):
-            self.data = self._tensor(self.data, dtype=torch.float32)
+        
+        self.data = self._tensor(self.data, dtype=torch.float32)
         if self.metric == "euclidean":
             self.data_sijs = DenseSimilarity.euclidean_distance(self.data, self.data)
         if self.metric == "cosine":
              self.data_sijs = DenseSimilarity.cosine_similarity(self.data , self.data)
         if self.privateData is None:
             raise Exception("ERROR: Data matrix not provided")
-        if isinstance(self.privateData, np.ndarray):
-            self.privateData = self._tensor(self.privateData, dtype=torch.float32)
+        #if isinstance(self.privateData, np.ndarray):
+        self.privateData = self._tensor(self.privateData, dtype=torch.float32)
         if self.metric == "euclidean":
              self.private_sijs = DenseSimilarity.euclidean_distance(self.data , self.privateData)
         if self.metric == "cosine":
@@ -66,9 +67,11 @@ class FacilityLocationConditionalGain:
 
     def batchedGain(self , selected_mask):
         remaining = (~selected_mask).nonzero(as_tuple=False).flatten()
+        
         if remaining.numel()==0:
             return torch.tensor(0.0, device=self.device), torch.tensor(-1, device=self.device)
         memo = self.similarity_with_nearest_in_effective_x.unsqueeze(1) 
+        
         candidates = self.data_sijs[:, remaining]                              
 
         new_best = torch.maximum(memo, candidates)
@@ -89,3 +92,32 @@ class FacilityLocationConditionalGain:
     def getEffectiveGroundSet(self):
         """Get the effective ground set"""
         return self.effective_ground_set
+    
+
+    def marginalGain(self , X , element):
+        """Compute the marginal gain of adding an element to the set"""
+        pass
+    def evaluate(self , evaluate_set):
+        """Evalaute the function on the given set"""
+        pass 
+    def marginalGainWithMemoization(self , X , element):
+        """Compute the marginal gain of adding an element to the set with memoization"""
+        pass
+    def evaluateWithMemoization(self , evaluate_set):
+        """Evaluate the function on the given set with memoization"""
+        pass
+    
+    def updateMemoization(self , X):
+        """Update the memoization for the given set"""
+        pass
+    def clearMemoization(self):
+        """Clear the memoization"""
+        pass
+    
+    def setMemoization(self , X):
+        """Set the memoization for the given set"""
+        pass
+    
+    def getEffectiveGroundSet(self):
+        """Get the effective ground set"""
+        pass

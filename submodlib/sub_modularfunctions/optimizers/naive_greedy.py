@@ -34,6 +34,8 @@ class NaiveGreedy(BaseOptimizer):
             print(f"Starting Naive Greedy optimization with budget {budget}")
         
         selected = torch.zeros(function.n , dtype=torch.bool, device=function.device)
+
+        
         selected_pairs = []
 
         iterator = range(budget)
