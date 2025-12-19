@@ -93,6 +93,7 @@ class GraphCutMutualInformation(BaseFunction):
         """Compute the marginal gain of adding an element to the set with memoization"""
         return self.sijs[element].sum().item()
     
+    """Gain values do not match exactly due to difference in implementation of max function in C++ and PyTorch."""
     def batchedGain(self, X):
 
         #gain = torch.maximum(self.similarity_with_nearest_in_effective_x , 2 * self.query_sijs.sum(dim=1)) - self.similarity_with_nearest_in_effective_x
