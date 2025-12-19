@@ -1,11 +1,10 @@
 
-from submodlib.sub_modularfunctions.base_function import BaseFunction
-import userValidator 
-from userValidator import validate_n, validate_sep_rep , validate_sijs
+from ..userValidator import validate_n, validate_mode, validate_sep_rep, validate_sijs
+from ..cal_simi_kernel import DenseSimilarity
+from ..base_function import BaseFunction
+from ..optimizers.optimizer_factory import OptimizerFactory
 import torch
-from cal_simi_kernel import DenseSimilarity
 import numpy as np
-from optimizers import OptimizerFactory
 
 """TODO : To implement all the functionlity for Graph Cut Mutual Information Function"""
 
@@ -33,11 +32,12 @@ class GraphCutMutualInformation(BaseFunction):
             
             if isinstance(self.data, np.ndarray):
                 self.data = self._tensor(self.data, dtype=torch.float32)
+
             
             if self.metric == "euclidean":
-                self.sijs = DenseSimilarity.euclidean_distance(self.data,self.query_data)
+                self.query_sijs = DenseSimilarity.euclidean_distance(self.data,self.query_data)
             elif self.metric == "cosine":
-                self.sijs = DenseSimilarity.cosine_similarity(self.data,self.query_data)
+                self.query_sijs = DenseSimilarity.cosine_similarity(self.data,self.query_data)
             else:
                 raise Exception("ERROR: Neither ground set data matrix nor similarity kernel provided")
         # if self.query_sijs is not None:
@@ -58,6 +58,12 @@ class GraphCutMutualInformation(BaseFunction):
         self.memoization_initialized = False
         self._initialize_memoization()
         self._initialize_ground_sets()
+        self.query_sum = 2 * self.query_sijs.sum(dim=1)
+    
+    def _initialize_memoization(self):
+        """Initialize memoization structures"""    
+        self.similarity_with_nearest_in_effective_x = self._tensor(torch.zeros(self.query_data.shape[0], dtype=torch.float32))
+        self.memoization_initialized = True
     
     def _initialize_ground_sets(self):
         """Initialize effective ground set and master set like C++ version"""
@@ -86,6 +92,22 @@ class GraphCutMutualInformation(BaseFunction):
     def marginalGainWithMemoization(self , X , element):
         """Compute the marginal gain of adding an element to the set with memoization"""
         return self.sijs[element].sum().item()
+    
+    def batchedGain(self, X):
+
+        #gain = torch.maximum(self.similarity_with_nearest_in_effective_x , 2 * self.query_sijs.sum(dim=1)) - self.similarity_with_nearest_in_effective_x
+        gain = 2 * self.query_sijs.sum(dim=1)
+        
+        gain = gain.masked_fill(X , float("-inf"))
+        return gain.max(dim=0)
+    
+    def updateBatchMemo(self , element):
+        candidate = self.query_sijs[element]
+        # print("Candidate:")
+        # print(candidate)
+        self.similarity_with_nearest_in_effective_x =  candidate
+        #print(self.similarity_with_nearest_in_effective_x)
+
 
     def evaluateWithMemoization(self , evaluate_set):
         """Evaluate the function on the given set with memoization"""

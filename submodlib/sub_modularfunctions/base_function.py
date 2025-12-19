@@ -30,7 +30,7 @@ class BaseFunction(ABC):
 
     def _initialize_memoization(self):
         """Initialize memoization structures"""    
-        self.similarity_with_nearest_in_effective_x = self._tensor(torch.zeros(self.n, dtype=torch.float32))
+        self.similarity_with_nearest_in_effective_x = self._tensor(torch.zeros(self.data.shape[0], dtype=torch.float32))
         self.memoization_initialized = True
 
     @abstractmethod
