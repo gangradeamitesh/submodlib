@@ -208,9 +208,9 @@ if __name__ == "__main__":
     # gb = 1024 ** 3
     # print(f"Free memory: {free / gb:.2f} GB")
     # print(f"Total memory: {total / gb:.2f} GB")
-    groundData = torch.randn(1000,1024)
+    groundData = torch.randn(10000,1024)
     singleQueryData = torch.randn(500,1024)
-    budget = 100
+    budget = 5000
     #130000
     """Compare C++ and PyTorch implementations of FacilityLocationVariantMutualInformation"""
     # indices_match, gains_match = compare_flmi(groundData, singleQueryData, budget)

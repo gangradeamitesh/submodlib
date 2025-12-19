@@ -58,7 +58,7 @@ class GraphCutMutualInformation(BaseFunction):
         self.memoization_initialized = False
         self._initialize_memoization()
         self._initialize_ground_sets()
-        self.query_sum = 2 * self.query_sijs.sum(dim=1)
+        self.query_sum = self.query_sijs.sum(dim=1)
     
     def _initialize_memoization(self):
         """Initialize memoization structures"""    
@@ -95,20 +95,16 @@ class GraphCutMutualInformation(BaseFunction):
     
     """Gain values do not match exactly due to difference in implementation of max function in C++ and PyTorch."""
     def batchedGain(self, X):
-
-        #gain = torch.maximum(self.similarity_with_nearest_in_effective_x , 2 * self.query_sijs.sum(dim=1)) - self.similarity_with_nearest_in_effective_x
-        gain = 2 * self.query_sijs.sum(dim=1)
-        
-        gain = gain.masked_fill(X , float("-inf"))
+        gain = self.query_sum.masked_fill(X , float("-inf"))
         return gain.max(dim=0)
     
     def updateBatchMemo(self , element):
-        candidate = self.query_sijs[element]
-        # print("Candidate:")
-        # print(candidate)
-        self.similarity_with_nearest_in_effective_x =  candidate
-        #print(self.similarity_with_nearest_in_effective_x)
-
+        # candidate = self.query_sijs[element]
+        # # print("Candidate:")
+        # # print(candidate)
+        # self.similarity_with_nearest_in_effective_x =  candidate
+        # #print(self.similarity_with_nearest_in_effective_x)
+        pass
 
     def evaluateWithMemoization(self , evaluate_set):
         """Evaluate the function on the given set with memoization"""
