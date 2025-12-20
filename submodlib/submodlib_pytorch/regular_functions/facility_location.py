@@ -3,7 +3,7 @@ import torch.nn.functional as F
 import numpy as np
 
 # Relative imports within the same package
-from ..userValidator import validate_n, validate_mode, validate_sep_rep, validate_sijs
+from ..userValidator import validate_n, validate_mode, validate_sijs
 from ..cal_simi_kernel import DenseSimilarity
 from ..base_function import BaseFunction
 from ..optimizers.optimizer_factory import OptimizerFactory
@@ -16,14 +16,12 @@ class FacilityLocation(BaseFunction):
     """
 
     def __init__(self, n, mode="dense", sijs=None, 
-                 data=None, data_rep=None, num_clusters=None, cluster_labels=None, metric="cosine", ground_set=None,device='cpu'):
+                 data=None, metric="cosine",device='cpu'):
         
-        super().__init__(n=n, mode=mode, sijs=sijs, data=data,cluster_label=cluster_labels , num_clusters=num_clusters, metric=metric,device=device)
-        self.data_rep = data_rep
+        super().__init__(n=n, mode=mode, sijs=sijs, data=data, metric=metric, device=device)
         self.effective_ground = None
         self.optimizer = None
-        
-        self.ground_set = ground_set        
+    
         self.similarity_with_nearest_in_effective_x = None
         self.memoization_initialized = False
         self.effective_ground_set = None
@@ -32,15 +30,9 @@ class FacilityLocation(BaseFunction):
         
         validate_n(self.n)
         validate_mode(self.mode)
-        #validate_sep_rep(self.mode, self.n_rep)
 
         if self.sijs is not None:
             validate_sijs(type(self.sijs), self.mode)
-            #if self.separate_rep == True:
-            #    if self.data.shape[1] != self.data_rep.shape[1]:
-            #        raise Exception("ERROR: Data and Representation have different dimensions")
-            #if self.data is not None or self.data_rep is not None:
-            #    print("WARNING: similarity kernel found. Provided data matrix will be ignored.")
         else:
             if self.data is None:
                 raise Exception("ERROR: Data matrix not provided")
@@ -59,21 +51,11 @@ class FacilityLocation(BaseFunction):
         self._initialize_ground_sets()
         self._initialize_memoization()
 
-    def _initialize_ground_sets(self):
-        self.effective_ground_set = self._tensor(torch.arange(self.n), dtype=torch.long)
-        #self.n_master = len(self.effective_ground_set)
-
-    def _initialize_memoization(self):
-        """Initialize memoization structures"""
-        
-        self.similarity_with_nearest_in_effective_x = self._tensor(torch.zeros(self.n, dtype=torch.float32))
-        self.memoization_initialized = True
-
-    def maximize(self, optimizer, budget, stopIfZeroGain=False, stopIfNegativeGain=False, epsilon=None, 
-                 verbose=False, show_progress=True, costs=None, costSensitiveGreedy=False):
+    def maximize(self, optimizer, budget, stopIfZeroGain=False, stopIfNegativeGain=False, 
+                 verbose=False, show_progress=True):
         """Maximize the function using the optimizer"""
         optimizer_instance = OptimizerFactory.get_optimizer(optimizer)
-        return optimizer_instance.optimize(self , budget , stopIfZeroGain , stopIfNegativeGain , epsilon , verbose , show_progress , costs , costSensitiveGreedy)
+        return optimizer_instance.optimize(self , budget , stopIfZeroGain , stopIfNegativeGain  , verbose , show_progress)
 
     def evaluate(self, evaluate_set):
         if not evaluate_set:

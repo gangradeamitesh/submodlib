@@ -5,7 +5,7 @@ from ..optimizers.optimizer_factory import OptimizerFactory
 import torch
 import numpy as np
 from submodlib.runtime import get_default_device
-from ..regular_submod_functions.graph_cut import GraphCut
+
 
 class GraphCutConditionalGain:
     

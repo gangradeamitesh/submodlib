@@ -12,7 +12,7 @@ class NaiveGreedy(BaseOptimizer):
         pass
 
     def optimize(self, function, budget, stopIfZeroGain=False, stopIfNegativeGain=False, epsilon=None, 
-                 verbose=False, show_progress=True, costs=None, costSensitiveGreedy=False):
+                 verbose=False, show_progress=True):
         """
         Optimize the submodular function using naive greedy algorithm.
         
@@ -52,6 +52,14 @@ class NaiveGreedy(BaseOptimizer):
             if verbose:
                 print(f"Iteration {iteration + 1}/{budget}")
             best_gain , best_idx = function.batchedGain(selected)
+            if stopIfNegativeGain and best_gain < 0:
+                if verbose:
+                    print("Stopping early due to negative gain.")
+                break
+            if stopIfZeroGain and best_gain == 0:
+                if verbose:
+                    print("Stopping early due to zero gain.")
+                break
             best_idx = int(best_idx.item())
             selected[best_idx] = True
             selected_pairs.append((best_idx , best_gain))

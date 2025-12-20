@@ -1,9 +1,9 @@
-from submodlib.sub_modularfunctions.userValidator import validate_n, validate_mode, validate_sep_rep, validate_sijs
+from submodlib.submodlib_pytorch.userValidator import validate_n, validate_mode, validate_sep_rep, validate_sijs
 import torch
 import numpy as np
-from submodlib.sub_modularfunctions.cal_simi_kernel import DenseSimilarity
-from submodlib.sub_modularfunctions.base_function import BaseFunction
-from submodlib.sub_modularfunctions.optimizers.optimizer_factory import OptimizerFactory
+from submodlib.submodlib_pytorch.cal_simi_kernel import DenseSimilarity
+from submodlib.submodlib_pytorch.base_function import BaseFunction
+from submodlib.submodlib_pytorch.optimizers.optimizer_factory import OptimizerFactory
 
 class DiparityMin(BaseFunction):
     def __init__(self, n, mode="dense", seperate_rep=None, n_rep=None, sijs=None, 

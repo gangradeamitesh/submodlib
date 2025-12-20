@@ -4,7 +4,7 @@ from ..base_function import BaseFunction
 from ..optimizers.optimizer_factory import OptimizerFactory
 import torch
 import numpy as np
-from sub_modularfunctions.conditional_gain_functions import FLCG
+from submodlib_pytorch.conditional_gain_functions import FLCG
 from 
 
 

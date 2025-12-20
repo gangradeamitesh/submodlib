@@ -1,14 +1,20 @@
 # __init__.py
 # Author: Vishal Kaushal <vishal.kaushal@gmail.com>
 from .version import __version__
-from .sub_modularfunctions.regular_submod_functions.facility_location import FacilityLocation
-from .sub_modularfunctions.regular_submod_functions.graph_cut import GraphCut
-from .sub_modularfunctions.mutual_info_functions.FLMI import FacilityLocationMutualInformation
-from .sub_modularfunctions.mutual_info_functions.FLVMI import FacilityLocationVariantMutualInformation
-from .sub_modularfunctions.conditional_gain_functions.FLCG import FacilityLocationConditionalGain
-from .sub_modularfunctions.conditional_gain_functions.GCCG import GraphCutConditionalGain
-from .sub_modularfunctions.mutual_info_functions.LOGDETMI import LogDeterminantMutualInformation
-from .sub_modularfunctions.mutual_info_functions.GCMI import GraphCutMutualInformation  
+"""Regular Submodular Functions"""
+from .submodlib_pytorch.regular_functions.facility_location import FacilityLocation
+from .submodlib_pytorch.regular_functions.graph_cut import GraphCut
+
+"""Submodular Mutual Information Functions"""
+from .submodlib_pytorch.mutual_info_functions.FLMI import FacilityLocationMutualInformation
+from .submodlib_pytorch.mutual_info_functions.FLVMI import FacilityLocationVariantMutualInformation
+from .submodlib_pytorch.mutual_info_functions.LOGDETMI import LogDeterminantMutualInformation
+from .submodlib_pytorch.mutual_info_functions.GCMI import GraphCutMutualInformation  
+
+"""Submodular Conditional Gain Functions"""
+from .submodlib_pytorch.conditional_gain_functions.FLCG import FacilityLocationConditionalGain
+from .submodlib_pytorch.conditional_gain_functions.GCCG import GraphCutConditionalGain
+
 from .functions import FacilityLocationFunction
 from .functions import GraphCutFunction
 from .functions import SetCoverFunction

@@ -208,45 +208,45 @@ if __name__ == "__main__":
     # gb = 1024 ** 3
     # print(f"Free memory: {free / gb:.2f} GB")
     # print(f"Total memory: {total / gb:.2f} GB")
-    groundData = torch.randn(10000,1024)
+    groundData = torch.randn(1000,1024)
     singleQueryData = torch.randn(500,1024)
-    budget = 5000
+    budget = 50
     #130000
     """Compare C++ and PyTorch implementations of FacilityLocationVariantMutualInformation"""
-    # indices_match, gains_match = compare_flmi(groundData, singleQueryData, budget)
-    # print("\n")
-    # print("Indices match:", indices_match) 
-    # print("Gains match:", gains_match)
+    indices_match, gains_match = compare_flmi(groundData, singleQueryData, budget)
+    print("\n")
+    print("Indices match:", indices_match) 
+    print("Gains match:", gains_match)
     
     """Compare C++ and PyTorch implementations of LOGDETMI"""
     
-    # indices_match, gains_match = compare_logdetmi(groundData, singleQueryData, budget)
-    # print("Indices match:", indices_match)
-    # print("Gains match:", gains_match) 
-    # logdetmi_torch = LogDeterminantMutualInformation(n=groundData.shape[0],
-    #                                                  num_queries=singleQueryData.shape[0],
-    #                                                  data=groundData,
-    #                                                  queryData=singleQueryData,
-    #                                                  metric="cosine",lambdaVal=1.0,magnificationEta=1)
-    # free , total = torch.cuda.mem_get_info()
-    # gb = 1024 ** 3
-    # print(f"Free memory: {free / gb:.2f} GB")
-    # print(f"Total memory: {total / gb:.2f} GB")
-    # greedy_torch = logdetmi_torch.maximize(budget=budget, optimizer='NaiveGreedy', stopIfZeroGain=False,
-    #                                        stopIfNegativeGain=False, verbose=False , show_progress=False,epsilon=1e-5,costs=None,costSensitiveGreedy=False)
-    # print(greedy_torch)
+    indices_match, gains_match = compare_logdetmi(groundData, singleQueryData, budget)
+    print("Indices match:", indices_match)
+    print("Gains match:", gains_match) 
+    logdetmi_torch = LogDeterminantMutualInformation(n=groundData.shape[0],
+                                                     num_queries=singleQueryData.shape[0],
+                                                     data=groundData,
+                                                     queryData=singleQueryData,
+                                                     metric="cosine",lambdaVal=1.0,magnificationEta=1)
+    free , total = torch.cuda.mem_get_info()
+    gb = 1024 ** 3
+    print(f"Free memory: {free / gb:.2f} GB")
+    print(f"Total memory: {total / gb:.2f} GB")
+    greedy_torch = logdetmi_torch.maximize(budget=budget, optimizer='NaiveGreedy', stopIfZeroGain=False,
+                                           stopIfNegativeGain=False, verbose=False , show_progress=False,epsilon=1e-5,costs=None,costSensitiveGreedy=False)
+    print(greedy_torch)
 
     """Compare C++ and PyTorch implementations of FacilityLocationConditionalGain"""
-    # indices_match, gains_match = compare_flcg(groundData, singleQueryData, budget)
-    # print("\n")
-    # print("Indices match:", indices_match)
-    # print("Gains match:", gains_match)
+    indices_match, gains_match = compare_flcg(groundData, singleQueryData, budget)
+    print("\n")
+    print("Indices match:", indices_match)
+    print("Gains match:", gains_match)
 
     """Compare C++ and PyTorch implementations of GraphCut"""
-    # indices_match, gains_match = compare_gc(groundData, budget)
-    # print("\n")
-    # print("Indices match:", indices_match)
-    # print("Gains match:", gains_match)
+    indices_match, gains_match = compare_gc(groundData, budget)
+    print("\n")
+    print("Indices match:", indices_match)
+    print("Gains match:", gains_match)
 
     """Comapre C++ and PyTorch implementations of GraphCutMutualInformation"""
     indices_match, gains_match = compare_gcmI(groundData, singleQueryData, budget)
