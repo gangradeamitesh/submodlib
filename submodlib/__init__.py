@@ -1,6 +1,7 @@
 # __init__.py
 # Author: Vishal Kaushal <vishal.kaushal@gmail.com>
 from .version import __version__
+
 """Regular Submodular Functions"""
 from .submodlib_pytorch.regular_functions.facility_location import FacilityLocation
 from .submodlib_pytorch.regular_functions.graph_cut import GraphCut

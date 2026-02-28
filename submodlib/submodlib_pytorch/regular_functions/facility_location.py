@@ -7,6 +7,7 @@ from ..userValidator import validate_n, validate_mode, validate_sijs
 from ..cal_simi_kernel import DenseSimilarity
 from ..base_function import BaseFunction
 from ..optimizers.optimizer_factory import OptimizerFactory
+from logger import get_logger , enable_logging , disable_logging
 
 class FacilityLocation(BaseFunction):
     """
@@ -54,8 +55,11 @@ class FacilityLocation(BaseFunction):
     def maximize(self, optimizer, budget, stopIfZeroGain=False, stopIfNegativeGain=False, 
                  verbose=False, show_progress=True):
         """Maximize the function using the optimizer"""
+        enable_logging()
+        logger = get_logger()
+        logger.info(f"Starting optimization with optimizer: {optimizer}, budget: {budget} , stopIfZeroGain: {stopIfZeroGain} , stopIfNegativeGain: {stopIfNegativeGain} , verbose: {verbose} , show_progress: {show_progress}")
         optimizer_instance = OptimizerFactory.get_optimizer(optimizer)
-        return optimizer_instance.optimize(self , budget , stopIfZeroGain , stopIfNegativeGain  , verbose , show_progress)
+        return optimizer_instance.optimize(self , budget=budget , stopIfZeroGain=stopIfZeroGain , stopIfNegativeGain=stopIfNegativeGain  , verbose=verbose , show_progress=show_progress)
 
     def evaluate(self, evaluate_set):
         if not evaluate_set:
