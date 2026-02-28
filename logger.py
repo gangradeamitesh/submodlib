@@ -1,26 +1,26 @@
-import logger
+import logging
 
-_logger = logger.get_logger("submodlib")
-_logger.setLevel(logger.INFO)
+_logging = logging.getLogger("submodlib")
+_logging.setLevel(logging.INFO)
 
-if not _logger.handlers:
-    handler = logger.StreamHandler()
+if not _logging.handlers:
+    handler = logging.StreamHandler()
     formatter = logging.Formatter(
         "%(asctime)s | %(levelname)s | %(name)s | %(message)s"
     )
     handler.setFormatter(formatter)
-    _logger.addHandler(handler)
+    _logging.addHandler(handler)
 
-_logger.propagate = False  
-_logger.disabled = True
+_logging.propagate = False  
+_logging.disabled = True
 
-def get_logger():
-    return _logger
+def get_logging():
+    return _logging
 
 def enable_logging():
-    _logger.setLevel(logging.INFO)
-    _logger.disabled = False
+    _logging.setLevel(logging.INFO)
+    _logging.disabled = False
 
 def disable_logging():
-    _logger.disabled = True 
+    _logging.disabled = True 
                

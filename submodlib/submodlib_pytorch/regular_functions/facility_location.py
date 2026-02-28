@@ -7,7 +7,7 @@ from ..userValidator import validate_n, validate_mode, validate_sijs
 from ..cal_simi_kernel import DenseSimilarity
 from ..base_function import BaseFunction
 from ..optimizers.optimizer_factory import OptimizerFactory
-from logger import get_logger , enable_logging , disable_logging
+from submodlib.logger import get_logging, enable_logging
 
 class FacilityLocation(BaseFunction):
     """
@@ -56,7 +56,7 @@ class FacilityLocation(BaseFunction):
                  verbose=False, show_progress=True):
         """Maximize the function using the optimizer"""
         enable_logging()
-        logger = get_logger()
+        logger = get_logging()
         logger.info(f"Starting optimization with optimizer: {optimizer}, budget: {budget} , stopIfZeroGain: {stopIfZeroGain} , stopIfNegativeGain: {stopIfNegativeGain} , verbose: {verbose} , show_progress: {show_progress}")
         optimizer_instance = OptimizerFactory.get_optimizer(optimizer)
         return optimizer_instance.optimize(self , budget=budget , stopIfZeroGain=stopIfZeroGain , stopIfNegativeGain=stopIfNegativeGain  , verbose=verbose , show_progress=show_progress)
