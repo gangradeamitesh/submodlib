@@ -114,13 +114,23 @@ class FacilityLocation(BaseFunction):
             return torch.tensor(0.0, device=self.device), torch.tensor(-1, device=self.device)
 
         memo = self.similarity_with_nearest_in_effective_x.unsqueeze(1) 
-        candidates = self.sijs[:, remaining]                              
+        # candidates = self.sijs[:, remaining]
+        best_gain = torch.tensor(float("-inf"), device=self.device)
+        best_idx = torch.tensor(-1, device=self.device, dtype=torch.long)
+        
+        #new_best = torch.maximum(memo, candidates)
+        for chunk in remaining.split(100):
+            candidates = self.sijs[:, chunk]
+            gains = torch.maximum(memo, candidates).sub(memo).sum(dim=0)
+            chunk_best_gain, rel_idx = gains.max(dim=0)
+            chunk_best_idx = chunk[rel_idx]
+            if chunk_best_gain > best_gain:
+                best_gain = chunk_best_gain
+                best_idx = chunk_best_idx
 
-        new_best = torch.maximum(memo, candidates)
-        gains = (new_best - memo).sum(dim=0)                  
-        best_gain, rel_idx = gains.max(dim=0)
-        best_idx = remaining[rel_idx]
-
+        # gains = (new_best - memo).sum(dim=0)             
+        # best_gain, rel_idx = gains.max(dim=0)
+        # best_idx = remaining[rel_idx]
         return best_gain, best_idx
     
     def updateBatchMemo(self, element):
