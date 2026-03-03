@@ -52,17 +52,18 @@ class NaiveGreedy(BaseOptimizer):
             if verbose:
                 print(f"Iteration {iteration + 1}/{budget}")
             best_gain , best_idx = function.batchedGain(selected)
-            if stopIfNegativeGain and best_gain < 0:
+            zero = torch.tensor(0.0, device=function.device)
+            if stopIfNegativeGain and torch.lt(best_gain, zero):
                 if verbose:
                     print("Stopping early due to negative gain.")
                 break
-            if stopIfZeroGain and best_gain == 0:
+            if stopIfZeroGain and torch.eq(best_gain, zero):
                 if verbose:
                     print("Stopping early due to zero gain.")
                 break
-            best_idx = int(best_idx.item())
+            #best_idx = int(best_idx.item())
             selected[best_idx] = True
             selected_pairs.append((best_idx , best_gain))
             function.updateBatchMemo(best_idx)
             
-        return selected_pairs
+        return [(int(idx.item()), float(gain.item())) for idx, gain in selected_pairs]
