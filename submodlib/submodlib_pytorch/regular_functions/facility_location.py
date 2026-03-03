@@ -7,7 +7,7 @@ from ..userValidator import validate_n, validate_mode, validate_sijs
 from ..cal_simi_kernel import DenseSimilarity
 from ..base_function import BaseFunction
 from ..optimizers.optimizer_factory import OptimizerFactory
-from submodlib.logger import get_logging, enable_logging
+from ...logger import get_logging, enable_logging
 
 class FacilityLocation(BaseFunction):
     """
