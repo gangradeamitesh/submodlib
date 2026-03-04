@@ -11,11 +11,11 @@ import numpy as np
 class GraphCut(BaseFunction):
 
     def __init__(self, n, mode="dense",lambda_val=0.1,mgsijs=None,ggsijs=None,data=None,
-                 metric="cosine") -> None:    
-        super().__init__(n=n, mode=mode,metric=metric , sijs=ggsijs, data=data)
+                 metric="cosine",device="cpu") -> None:    
+        super().__init__(n=n, mode=mode,metric=metric , sijs=ggsijs, data=data,device=device)
 
         self.lambda_val = lambda_val
-        
+
         self.effective_ground = None
         
         self.optimizer = None
@@ -72,7 +72,7 @@ class GraphCut(BaseFunction):
                  verbose=False, show_progress=True, costs=None, costSensitiveGreedy=False):
         """Maximize the function using the optimizer"""
         optimizer_instance = OptimizerFactory.get_optimizer(optimizer)
-        return optimizer_instance.optimize(self , budget , stopIfZeroGain , stopIfNegativeGain , epsilon , verbose , show_progress , costs , costSensitiveGreedy)
+        return optimizer_instance.optimize(self , budget=budget ,stopIfZeroGain=stopIfZeroGain , stopIfNegativeGain=stopIfNegativeGain , epsilon=epsilon , verbose=verbose , show_progress=show_progress)
     
     def marginalGain(self , X , element):
         """Compute the marginal gain of adding an element to the set"""
@@ -125,9 +125,7 @@ class GraphCut(BaseFunction):
     
     def updateBatchMemo(self , ele):
         self.total_similarity_with_subset += self.sijs[:,ele]
-
         
-    
     def evaluateWithMemoization(self , evaluate_set):
         """Evaluate the function on the given set with memoization"""
         if not self.memoization_initialized:
