@@ -71,7 +71,7 @@ class FacilityLocationMutualInformation(BaseFunction):
                  verbose=False, show_progress=True, costs=None, costSensitiveGreedy=False):
         """Maximize the function using the optimizer"""
         optimizer_instance = OptimizerFactory().get_optimizer(optimizer=optimizer)
-        return optimizer_instance.optimize(self , budget , stopIfZeroGain , stopIfNegativeGain , epsilon , verbose , show_progress , costs , costSensitiveGreedy)
+        return optimizer_instance.optimize(self , budget=budget , stopIfZeroGain=False , stopIfNegativeGain=False , epsilon=None , verbose =False, show_progress=True)
 
     def marginalGain(self , X , element):
         """Compute the marginal gain of adding an element to the set"""
@@ -114,15 +114,24 @@ class FacilityLocationMutualInformation(BaseFunction):
             return torch.tensor(0., device=self.device), torch.tensor(-1, device=self.device)
         candidate_sims = self.sijs[:, remaining]
         new_best = torch.maximum(self.similarity_with_nearest_in_effective_x.unsqueeze(1) , candidate_sims)
+        # new_best = torch.max(candidate_sims , dim=1)
+        print("New best shape")
+        print(new_best.shape)
+        print("query_cap_shape")
+        print(self.query_cap.shape)
+        # new_best = torch.maximum(candidate_sims)
         old_cap = torch.minimum(self.similarity_with_nearest_in_effective_x.unsqueeze(1),self.query_cap.unsqueeze(1))
         new_cap = torch.minimum(new_best,self.query_cap.unsqueeze(1))
         gains = (new_cap-old_cap).sum(dim=0)
-        return gains.max(dim=0)
+        best_gain , rel_idx = gains.max(dim=0)
+        best_idx = remaining[rel_idx]
+        return best_gain , best_idx
 
     
     def updateBatchMemo(self , element):
         candidate = self.sijs[: , element]
         self.similarity_with_nearest_in_effective_x = torch.maximum(self.similarity_with_nearest_in_effective_x , candidate)
+        #self.similarity_with_nearest_in_effective_x = candidate
 
     def evaluateWithMemoization(self , evaluate_set):
         """Evaluate the function on the given set with memoization"""
