@@ -114,12 +114,6 @@ class FacilityLocationMutualInformation(BaseFunction):
             return torch.tensor(0., device=self.device), torch.tensor(-1, device=self.device)
         candidate_sims = self.sijs[:, remaining]
         new_best = torch.maximum(self.similarity_with_nearest_in_effective_x.unsqueeze(1) , candidate_sims)
-        # new_best = torch.max(candidate_sims , dim=1)
-        print("New best shape")
-        print(new_best.shape)
-        print("query_cap_shape")
-        print(self.query_cap.shape)
-        # new_best = torch.maximum(candidate_sims)
         old_cap = torch.minimum(self.similarity_with_nearest_in_effective_x.unsqueeze(1),self.query_cap.unsqueeze(1))
         new_cap = torch.minimum(new_best,self.query_cap.unsqueeze(1))
         gains = (new_cap-old_cap).sum(dim=0)
