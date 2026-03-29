@@ -35,3 +35,7 @@ def validate_sijs(sijs_data_type, mode , num_neighbors=None , separate_rep=None)
         raise Exception("Invalid kernel provided")
 def validate_data_sijs():
     pass
+
+def validate_metric(metric):
+    if metric not in ['euclidean', 'cosine']:
+        raise Exception("ERROR: Incorrect metric. Must be one of 'euclidean' or 'cosine'")

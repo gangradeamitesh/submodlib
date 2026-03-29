@@ -3,7 +3,7 @@ import torch.nn.functional as F
 import numpy as np
 
 # Relative imports within the same package
-from ..userValidator import validate_n, validate_mode, validate_sijs
+from ..userValidator import validate_n, validate_mode, validate_sijs , validate_metric
 from ..cal_simi_kernel import DenseSimilarity
 from ..base_function import BaseFunction
 from ..optimizers.optimizer_factory import OptimizerFactory
@@ -19,6 +19,12 @@ class FacilityLocation(BaseFunction):
     def __init__(self, n, mode="dense", sijs=None, 
                  data=None, metric="cosine",device='cpu'):
         
+        if data is None and sijs is None:
+            raise Exception("ERROR: Neither ground set data matrix nor similarity kernel provided")
+        validate_n(n)
+        validate_mode(mode)
+        validate_metric(metric)
+
         super().__init__(n=n, mode=mode, sijs=sijs, data=data, metric=metric, device=device)
         self.effective_ground = None
         self.optimizer = None
@@ -29,9 +35,6 @@ class FacilityLocation(BaseFunction):
         self.master_set = None
         self.n_master = None
         
-        validate_n(self.n)
-        validate_mode(self.mode)
-
         if self.sijs is not None:
             validate_sijs(type(self.sijs), self.mode)
         else:
@@ -175,22 +178,3 @@ class FacilityLocation(BaseFunction):
         """
         return self.effective_ground_set  # Return a copy to prevent external modification
     
-
-if __name__ == "__main__":
-    
-    data = torch.randn(1000, 1024 ,dtype=torch.float16)
-    query = torch.randn(800, 1024 , dtype=torch.float16)
-    obj = FacilityLocation(n=data.shape[0],data=data , metric="cosine")
-
-    greedy_list = obj.maximize(optimizer="NaiveGreedy" , budget=BUDGET , stopIfZeroGain=False , stopIfNegativeGain =False, epsilon=False , verbose=False , show_progress=False , costs=None , costSensitiveGreedy=False)
-    print("---------------")
-    print(greedy_list)
-
-
-    print("C++ --------------------")
-    # obj = FacilityLocationFunction(n=data.shape[0], data=data, 
-    #                                                 metric="cosine", 
-    #                                                )
-    # greedyList = obj.maximize(budget=10,optimizer='NaiveGreedy', stopIfZeroGain=False, 
-    #                           stopIfNegativeGain=False, verbose=False)
-    # print(greedyList)

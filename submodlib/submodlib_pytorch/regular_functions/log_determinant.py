@@ -11,6 +11,11 @@ class LogDeterminant(BaseFunction):
     def __init__(self, n, mode="dense", sijs=None, 
                  data=None, num_clusters=None, cluster_labels=None, 
                  metric="cosine") -> None:
+        if data is None and sijs is None:
+            raise Exception("ERROR: Neither ground set data matrix nor similarity kernel provided")
+        validate_n(n)
+        validate_mode(mode)
+
         super().__init__(n, mode, sijs, data, num_clusters, metric, cluster_labels)
         self.optimizer = None
         
@@ -19,8 +24,7 @@ class LogDeterminant(BaseFunction):
         
         self.effective_ground_set = None
         self._initialize_ground_sets()
-        validate_n(self.n)
-        validate_mode(self.mode)
+        
         #validate_sep_rep(self.separate_rep, self.mode, self.n_rep)
         if self.sijs is not None:
             validate_sijs(type(self.sijs))

@@ -2,7 +2,7 @@ from pickle import NONE
 from submodlib.submodlib_pytorch.base_function import BaseFunction
 from submodlib.submodlib_pytorch.optimizers.optimizer_factory import OptimizerFactory
 import torch
-from submodlib.submodlib_pytorch.userValidator import validate_n, validate_mode, validate_sep_rep , validate_sijs
+from submodlib.submodlib_pytorch.userValidator import validate_metric, validate_n, validate_mode, validate_sep_rep , validate_sijs
 from submodlib.submodlib_pytorch.cal_simi_kernel import DenseSimilarity
 import numpy as np
 
@@ -10,14 +10,18 @@ import numpy as np
 """TODO: To implement the lambda functionlity for graph cut"""
 class GraphCut(BaseFunction):
 
-    def __init__(self, n, mode="dense",lambda_val=0.1,mgsijs=None,ggsijs=None,data=None,
-                 metric="cosine",device="cpu") -> None:    
+    def __init__(self, n, mode="dense",lambda_val=0.1,ggsijs=None,data=None,
+                 metric="cosine",device="cpu") -> None:
+        if data is None and ggsijs is None:
+            raise Exception("ERROR: Neither ground set data matrix nor similarity kernel provided")
+        validate_n(n)
+        validate_mode(mode)
+        validate_metric(metric)
+
         super().__init__(n=n, mode=mode,metric=metric , sijs=ggsijs, data=data,device=device)
 
         self.lambda_val = lambda_val
-
         self.effective_ground = None
-        
         self.optimizer = None
                 
         # Memoization variables (similar to C++ version)
@@ -27,16 +31,8 @@ class GraphCut(BaseFunction):
         
         self.effective_ground_set = None
         self._initialize_ground_sets()
-        validate_n(self.n)
-        validate_mode(self.mode)
-        if self.n <= 0:
-            raise Exception("ERROR: Number of elements in ground set must be positive")
-
-        if self.mode not in ['dense', 'sparse']:
-                raise Exception("ERROR: Incorrect mode. Must be one of 'dense' or 'sparse'")
-        
         if self.sijs is not None:
-            validate_sijs(type(self.sijs), self.mode, self.num_neighbors, self.separate_rep)
+            validate_sijs(type(self.sijs), self.mode)
             if self.separate_rep == True:
                 if self.data.shape[1] != self.data_rep.shape[1]:
                     raise Exception("ERROR: Data and Representation have different dimensions")
@@ -64,9 +60,9 @@ class GraphCut(BaseFunction):
         self.total_similarity_with_subset = torch.zeros(self.n , device=self.device)
         self.self_sim = self.sijs.diagonal().clone()
         self.memoization_initialized = True
-    def _initialize_ground_sets(self):
-        """Initialize effective ground set and master set like C++ version"""
-        self.effective_ground_set = self._tensor(torch.arange(self.n), dtype=torch.long)
+    # def _initialize_ground_sets(self):
+    #     """Initialize effective ground set and master set like C++ version"""
+    #     self.effective_ground_set = self._tensor(torch.arange(self.n), dtype=torch.long)
     
     def maximize(self, optimizer, budget, stopIfZeroGain=False, stopIfNegativeGain=False, epsilon=None, 
                  verbose=False, show_progress=True, costs=None, costSensitiveGreedy=False):
