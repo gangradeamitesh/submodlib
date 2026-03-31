@@ -51,6 +51,8 @@ class FacilityLocationVariantMutualInformation(BaseFunction):
                 self.query_sijs = DenseSimilarity.euclidean_distance(self.data , self.query_data)
             elif self.metric == "cosine":
                 self.query_sijs = DenseSimilarity.cosine_similarity(self.data , self.query_data)
+            elif self.metric == "rbf":
+                self.query_sijs = DenseSimilarity.rbf_similarity(self.data , self.query_data)
             else:   
                 raise Exception("ERROR: Neither query data matrix nor query similarity kernel provided") 
         self.effective_query_set = None

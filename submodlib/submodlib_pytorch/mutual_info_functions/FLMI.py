@@ -36,6 +36,8 @@ class FacilityLocationMutualInformation(BaseFunction):
                 self.sijs = DenseSimilarity.euclidean_distance(self.data,self.data)
             elif self.metric == "cosine":
                 self.sijs = DenseSimilarity.cosine_similarity(self.data,self.data)
+            elif self.metric == "rbf":
+                self.sijs = DenseSimilarity.rbf_similarity(self.data , self.data)
             else:
                 raise Exception("ERROR: Neither ground set data matrix nor similarity kernel provided")
         if self.query_sijs is not None:
@@ -49,6 +51,8 @@ class FacilityLocationMutualInformation(BaseFunction):
                 self.query_sijs = DenseSimilarity.euclidean_distance(self.data , self.query_data)
             elif self.metric == "cosine":
                 self.query_sijs = DenseSimilarity.cosine_similarity(self.data , self.query_data)
+            elif self.metric == "rbf":
+                self.query_sijs = DenseSimilarity.rbf_similarity(self.data , self.query_data)
             else:   
                 raise Exception("ERROR: Neither query data matrix nor query similarity kernel provided") 
         self._initialize_ground_sets()

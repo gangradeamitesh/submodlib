@@ -50,9 +50,11 @@ class LogDeterminantMutualInformation(BaseFunction):
                 self.data = self._tensor(self.data, dtype=torch.float16)
             
             if self.metric == "euclidean":
-                self.sijs = DenseSimilarity.euclidean_distance(self.data,self.data)
+                self.sijs = DenseSimilarity.euclidean_distance(self.data, self.data)
             elif self.metric == "cosine":
-                self.sijs = DenseSimilarity.cosine_similarity(self.data,self.data)
+                self.sijs = DenseSimilarity.cosine_similarity(self.data, self.data)
+            elif self.metric == "rbf":
+                self.sijs = DenseSimilarity.rbf_similarity(self.data , self.data)
             else:
                 raise Exception("ERROR: Neither ground set data matrix nor similarity kernel provided")
         if self.query_query_sijs is not None:
@@ -66,6 +68,8 @@ class LogDeterminantMutualInformation(BaseFunction):
                 self.query_query_sijs = DenseSimilarity.euclidean_distance(self.query_data , self.query_data)
             elif self.metric == "cosine":
                 self.query_query_sijs = DenseSimilarity.cosine_similarity(self.query_data , self.query_data)
+            elif self.metric == "rbf":
+                self.query_query_sijs = DenseSimilarity.rbf_similarity(self.query_data , self.query_data)
             else:   
                 raise Exception("ERROR: Neither query data matrix nor query similarity kernel provided")
         if self.query_sijs is not None:
@@ -77,6 +81,8 @@ class LogDeterminantMutualInformation(BaseFunction):
                 self.query_sijs = DenseSimilarity.euclidean_distance(self.data , self.query_data)
             elif self.metric == "cosine":
                 self.query_sijs = DenseSimilarity.cosine_similarity(self.data , self.query_data)
+            elif self.metric == "rbf":
+                self.query_sijs = DenseSimilarity.rbf_similarity(self.data , self.query_data)
             else:   
                 raise Exception("ERROR: Neither query data matrix nor query similarity kernel provided")
             
