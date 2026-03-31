@@ -25,6 +25,7 @@ class FacilityLocationMutualInformation(BaseFunction):
 
         validate_n(self.n)
         if self.sijs is not None:
+            self.sijs = self._tensor(self.sijs)
             validate_sijs(type(self.sijs))
         else:
             if self.data is None:
@@ -41,7 +42,8 @@ class FacilityLocationMutualInformation(BaseFunction):
             else:
                 raise Exception("ERROR: Neither ground set data matrix nor similarity kernel provided")
         if self.query_sijs is not None:
-            """TODO : Validate query_sijs"""
+            self.query_sijs = self._tensor(self.query_sijs)
+            validate_sijs(type(self.query_sijs))
         else:
             if self.query_data is None:
                 raise Exception("ERROR: Query data matrix not provided")

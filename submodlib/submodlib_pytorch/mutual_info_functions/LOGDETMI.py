@@ -3,7 +3,7 @@ from ..base_function import BaseFunction
 from ..optimizers.optimizer_factory import OptimizerFactory
 import torch
 import numpy as np
-
+from ..userValidator import validate_sijs
 
 import torch
 import torch.nn.functional as F
@@ -41,7 +41,8 @@ class LogDeterminantMutualInformation(BaseFunction):
         #     raise Exception("ERROR: Number of queries must be >= 0")
 #        validate_n(self.n)
         if self.sijs is not None:
-            """TODO: Validate data_sijs"""
+            self.sijs = self._tensor(self.sijs)
+            validate_sijs(type(self.sijs))
         else:
             if self.data is None:
                 raise Exception("ERROR: Data matrix not provided")
@@ -58,7 +59,8 @@ class LogDeterminantMutualInformation(BaseFunction):
             else:
                 raise Exception("ERROR: Neither ground set data matrix nor similarity kernel provided")
         if self.query_query_sijs is not None:
-            """TODO : Validate query_sijs"""
+            self.query_query_sijs = self._tensor(self.query_query_sijs)
+            validate_sijs(type(self.query_query_sijs))
         else:
             if self.query_data is None:
                 raise Exception("ERROR: Query data matrix not provided")
@@ -73,7 +75,8 @@ class LogDeterminantMutualInformation(BaseFunction):
             else:   
                 raise Exception("ERROR: Neither query data matrix nor query similarity kernel provided")
         if self.query_sijs is not None:
-            """TODO : Validate query_sijs"""
+            self.query_sijs = self._tensor(self.query_sijs)
+            validate_sijs(type(self.query_sijs))
         else:
             if self.query_data is None:
                 raise Exception("ERROR: Query data matrix not provided")

@@ -24,16 +24,15 @@ class GraphCutMutualInformation(BaseFunction):
         self.evalX = 0.0
 
         validate_n(self.n)
-        if self.sijs is not None:
-            """TODO: Validate data_sijs"""
+        if self.query_sijs is not None:
+            self.query_sijs = self._tensor(self.query_sijs)
+            validate_sijs(type(self.query_sijs))
         else:
             if self.data is None:
                 raise Exception("ERROR: Data matrix not provided")
             
             if isinstance(self.data, np.ndarray):
-                self.data = self._tensor(self.data, dtype=torch.float32)
-
-            
+                self.data = self._tensor(self.data, dtype=torch.float32)            
             if self.metric == "euclidean":
                 self.query_sijs = DenseSimilarity.euclidean_distance(self.data,self.query_data)
             elif self.metric == "cosine":

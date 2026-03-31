@@ -27,30 +27,35 @@ class FacilityLocationConditionalGain(BaseFunction):
         if self.data is None:
                 raise Exception("ERROR: Data matrix not provided")
         
-        self.data = self._tensor(self.data, dtype=torch.float32)
-        if self.metric == "euclidean":
-            self.data_sijs = DenseSimilarity.euclidean_distance(self.data, self.data)
-        elif self.metric == "cosine":
-            self.data_sijs = DenseSimilarity.cosine_similarity(self.data , self.data)
-        elif self.metric == "rbf":
-            self.data_sijs = DenseSimilarity.rbf_similarity(self.data , self.data)
+        if self.data_sijs is not None:
+            self.data_sijs = self._tensor(self.data_sijs)
+            validate_sijs(type(self.data_sijs))
+        else:        
+            self.data = self._tensor(self.data, dtype=torch.float32)
+            if self.metric == "euclidean":
+                self.data_sijs = DenseSimilarity.euclidean_distance(self.data, self.data)
+            elif self.metric == "cosine":
+                self.data_sijs = DenseSimilarity.cosine_similarity(self.data , self.data)
+            elif self.metric == "rbf":
+                self.data_sijs = DenseSimilarity.rbf_similarity(self.data , self.data)
+            else:
+                raise Exception(f"ERROR: Similarity Metric {self.metric} not recognized.")
+        
+        if self.private_sijs is not None:
+            self.private_sijs = self._tensor(self.private_sijs)
+            validate_sijs(type(self.private_sijs))
         else:
-            raise Exception(f"ERROR: Similarity Metric {self.metric} not recognized.")
-        
-        if self.privateData is None:
-            raise Exception("ERROR: Data matrix not provided")
-        
-        #if isinstance(self.privateData, np.ndarray):
-        self.privateData = self._tensor(self.privateData, dtype=torch.float32)
-        
-        if self.metric == "euclidean":
-            self.private_sijs = DenseSimilarity.euclidean_distance(self.data , self.privateData)
-        elif self.metric == "cosine":
-            self.private_sijs = DenseSimilarity.cosine_similarity(self.data , self.privateData)
-        elif self.metric == "rbf":
-            self.private_sijs = DenseSimilarity.rbf_similarity(self.data , self.privateData)
-        else:
-            raise Exception(f"ERROR: Similarity Metric {self.metric} not recognized.")
+            if self.privateData is None:
+                raise Exception("ERROR: Data matrix not provided")
+            self.privateData = self._tensor(self.privateData, dtype=torch.float32)        
+            if self.metric == "euclidean":
+                self.private_sijs = DenseSimilarity.euclidean_distance(self.data , self.privateData)
+            elif self.metric == "cosine":
+                self.private_sijs = DenseSimilarity.cosine_similarity(self.data , self.privateData)
+            elif self.metric == "rbf":
+                self.private_sijs = DenseSimilarity.rbf_similarity(self.data , self.privateData)
+            else:
+                raise Exception(f"ERROR: Similarity Metric {self.metric} not recognized.")
             
         self.private_set = None
         self.private_sim = self.privacyHardness * self.private_sijs.max(dim=1).values
