@@ -19,7 +19,7 @@ def validate_sep_rep(separate_rep, mode , n_rep):
                 raise Exception("Only dense mode supported if separate_rep = True")
 
 """Checking the spase or dense kernel"""
-def validate_sijs(sijs_data_type, mode , num_neighbors=None , separate_rep=None):
+def validate_sijs(sijs_data_type, mode="dense" , num_neighbors=None , separate_rep=None):
     # if sijs_data_type == scipy.sparse.csr.csr_matrix:
     #     if num_neighbors is None or num_neighbors <= 0:
     #         raise Exception("ERROR: Positive num_neighbors must be provided for given sparse kernel")

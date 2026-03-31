@@ -9,7 +9,9 @@ class BaseFunction(ABC):
         self.n = n
         self.mode = mode
         self.metric = metric
-        self.data = self._tensor(data)
+        self.data = data
+        if self.data is not None:
+            self.data = self._tensor(data)
         self.sijs = sijs
         if query_data is not None:
             self.query_data = self._tensor(query_data)
