@@ -7,7 +7,7 @@ import numpy as np
 
 class FacilityLocationMutualInformation(BaseFunction):
     def __init__(self, n , num_queries , data_sijs=None, query_sijs=None,
-                 data=None, query_data=None, metric="cosine", magnificationEta=1):
+                 data=None, query_data=None, metric="cosine", magnificationEta=1, device=None):
         """
         Initializes the Facility Location Mutual Information Function.
 
@@ -17,7 +17,7 @@ class FacilityLocationMutualInformation(BaseFunction):
         - num_neighbors: Number of neighbors to consider for mutual information calculation.
         """
 
-        super().__init__(n=n, sijs=data_sijs, data=data, metric=metric,query_data=query_data,query_sijs=query_sijs)
+        super().__init__(n=n, sijs=data_sijs, data=data, metric=metric,query_data=query_data,query_sijs=query_sijs, device=device)
         self.magnificationEta = magnificationEta
         self.effective_ground_set = None
         self.num_queries = num_queries
@@ -109,12 +109,6 @@ class FacilityLocationMutualInformation(BaseFunction):
     
 
     def batchedGain(self , X):
-        # candidate_sims = self.sijs.masked_fill(X , float("-inf"))
-        # new_best = torch.maximum(self.similarity_with_nearest_in_effective_x , candidate_sims) - self.similarity_with_nearest_in_effective_x
-        # old_cap = torch.minimum(self.similarity_with_nearest_in_effective_x, self.query_cap)
-        # new_cap = torch.minimum(new_best , self.query_cap)
-        # gain = (new_cap).sum(dim=0)
-        # return gain.max(dim=0)
         remaining = (~X).nonzero(as_tuple=False).flatten()
         if remaining.numel() == 0:
             return torch.tensor(0., device=self.device), torch.tensor(-1, device=self.device)
@@ -122,11 +116,12 @@ class FacilityLocationMutualInformation(BaseFunction):
         new_best = torch.maximum(self.similarity_with_nearest_in_effective_x.unsqueeze(1) , candidate_sims)
         old_cap = torch.minimum(self.similarity_with_nearest_in_effective_x.unsqueeze(1),self.query_cap.unsqueeze(1))
         new_cap = torch.minimum(new_best,self.query_cap.unsqueeze(1))
-        gains = (new_cap-old_cap).sum(dim=0)
-        best_gain , rel_idx = gains.max(dim=0)
-        best_idx = remaining[rel_idx]
-        return best_gain , best_idx
-
+        gains = (new_cap-old_cap).sum(dim=0)                
+        best_gain = gains.max()
+        tied_rel_indices = torch.where(gains == best_gain)[0]
+        rel_idx = tied_rel_indices[-1]
+        best_idx = remaining[rel_idx]        
+        return best_gain, best_idx
     
     def updateBatchMemo(self , element):
         candidate = self.sijs[: , element]

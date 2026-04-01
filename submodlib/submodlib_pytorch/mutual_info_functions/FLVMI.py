@@ -121,7 +121,11 @@ class FacilityLocationVariantMutualInformation(BaseFunction):
         gain = torch.maximum(self.similarity_with_nearest_in_effective_x , self.query_sijs) - self.similarity_with_nearest_in_effective_x
         gain = gain.sum(dim=1) + self.queryDiversityEta * self.query_cap
         gain = gain.masked_fill(X, float("-inf"))
-        return gain.max(dim=0)
+        best_gain = gain.max()
+        tied_indices = torch.where(gain == best_gain)[0]        
+        # Select the last index to mimic the ">=" tie-breaking strategy
+        best_idx = tied_indices[-1]        
+        return best_gain, best_idx
 
     def updateBatchMemo(self,element):
         candidate = self.query_sijs[element]
