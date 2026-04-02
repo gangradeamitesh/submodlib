@@ -77,7 +77,7 @@ class FacilityLocationMutualInformation(BaseFunction):
                  verbose=False, show_progress=True, costs=None, costSensitiveGreedy=False):
         """Maximize the function using the optimizer"""
         optimizer_instance = OptimizerFactory().get_optimizer(optimizer=optimizer)
-        return optimizer_instance.optimize(self , budget=budget , stopIfZeroGain=False , stopIfNegativeGain=False , epsilon=None , verbose =False, show_progress=True)
+        return optimizer_instance.optimize(self , budget=budget , stopIfZeroGain=stopIfZeroGain , stopIfNegativeGain=stopIfNegativeGain , epsilon=epsilon , verbose =verbose, show_progress=show_progress)
 
     def marginalGain(self , X , element):
         """Compute the marginal gain of adding an element to the set"""
