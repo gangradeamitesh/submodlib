@@ -33,10 +33,7 @@ class GraphCut(BaseFunction):
         self._initialize_ground_sets()
         if self.sijs is not None:
             validate_sijs(type(self.sijs), self.mode)
-            if self.separate_rep == True:
-                if self.data.shape[1] != self.data_rep.shape[1]:
-                    raise Exception("ERROR: Data and Representation have different dimensions")
-            if self.data is not None or self.data_rep is not None:
+            if self.data is not None:
                 print("WARNING: similarity kernel found. Provided data matrix will be ignored.")
         else:
             if self.data is None:

@@ -53,7 +53,7 @@ class NaiveGreedy(BaseOptimizer):
                 print(f"Iteration {iteration + 1}/{budget}")
             best_gain , best_idx = function.batchedGain(selected)
             zero = torch.tensor(0.0, device=function.device)
-            if stopIfNegativeGain and torch.lt(best_gain, zero):
+            if stopIfNegativeGain and best_gain<0:
                 if verbose:
                     print("Stopping early due to negative gain.")
                 break
