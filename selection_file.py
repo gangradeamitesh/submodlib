@@ -1,9 +1,7 @@
 import torch
 import torch.nn.functional as F
-from vectorized_greedy import maximize_function
 from submodlib import FacilityLocationFunction
 from submodlib import FacilityLocation
-from submodlib import GraphCutFunction
 from submodlib import GraphCut
 
 #from submodlib import faci
@@ -20,6 +18,8 @@ from submodlib import GraphCut
 from submodlib import GraphCutMutualInformationFunction
 from submodlib import GraphCutMutualInformation
 import time
+from submodlib import LogDeterminantFunction
+from submodlib import LogDeterminant
 
 def compare_flmi(ground_data, query_data, budget):
     # C++ Implementation
@@ -197,6 +197,37 @@ def compare_gcmI(groundData, queryData, budget):
     return indices_match , gains_match
 
 
+def compare_logdet(groundData , budget):
+    # C++ Implementation
+    logdet_cpp = LogDeterminantFunction(n=groundData.shape[0], data=groundData, metric="euclidean", lambdaVal=1.0,mode="dense")
+                                    
+    greedy_cpp = logdet_cpp.maximize(budget=budget, optimizer='NaiveGreedy', stopIfZeroGain=False,
+                                   stopIfNegativeGain=False, verbose=False)
+
+    # PyTorch Implementation
+    logdet_torch = LogDeterminant(n=groundData.shape[0],
+                                  data=groundData,
+                                  metric="euclidean",lambdaVal=1.0,mode="dense")
+    greedy_torch = logdet_torch.maximize(budget=budget, optimizer='NaiveGreedy', stopIfZeroGain=False,
+                                       stopIfNegativeGain=False, verbose=False , show_progress=False,epsilon=None)
+
+    
+    print("C++ Implementation Results:")
+    print(greedy_cpp)
+    print("PyTorch Implementation Results:")
+    print(greedy_torch)
+
+    indices_cpp = [item[0] for item in greedy_cpp]
+    indices_torch = [item[0] for item in greedy_torch]
+
+    gains_cpp = [item[1] for item in greedy_cpp]
+    gains_torch = [item[1] for item in greedy_torch]
+
+    indices_match = indices_cpp == indices_torch
+    gains_match = all(abs(a - b) < 1e-5 for a, b in zip(gains_cpp, gains_torch))
+
+    return indices_match, gains_match
+
 if __name__ == "__main__":
     print("Starting comparisons...")
     # import torch
@@ -213,43 +244,50 @@ if __name__ == "__main__":
     budget = 50
     #130000
     """Compare C++ and PyTorch implementations of FacilityLocationVariantMutualInformation"""
-    indices_match, gains_match = compare_flmi(groundData, singleQueryData, budget)
-    print("\n")
-    print("Indices match:", indices_match) 
-    print("Gains match:", gains_match)
+    # indices_match, gains_match = compare_flmi(groundData, singleQueryData, budget)
+    # print("\n")
+    # print("Indices match:", indices_match) 
+    # print("Gains match:", gains_match)
     
     """Compare C++ and PyTorch implementations of LOGDETMI"""
     
-    indices_match, gains_match = compare_logdetmi(groundData, singleQueryData, budget)
-    print("Indices match:", indices_match)
-    print("Gains match:", gains_match) 
-    logdetmi_torch = LogDeterminantMutualInformation(n=groundData.shape[0],
-                                                     num_queries=singleQueryData.shape[0],
-                                                     data=groundData,
-                                                     queryData=singleQueryData,
-                                                     metric="cosine",lambdaVal=1.0,magnificationEta=1)
-    free , total = torch.cuda.mem_get_info()
-    gb = 1024 ** 3
-    print(f"Free memory: {free / gb:.2f} GB")
-    print(f"Total memory: {total / gb:.2f} GB")
-    greedy_torch = logdetmi_torch.maximize(budget=budget, optimizer='NaiveGreedy', stopIfZeroGain=False,
-                                           stopIfNegativeGain=False, verbose=False , show_progress=False,epsilon=1e-5,costs=None,costSensitiveGreedy=False)
-    print(greedy_torch)
+    # indices_match, gains_match = compare_logdetmi(groundData, singleQueryData, budget)
+    # print("Indices match:", indices_match)
+    # print("Gains match:", gains_match) 
+    # logdetmi_torch = LogDeterminantMutualInformation(n=groundData.shape[0],
+    #                                                  num_queries=singleQueryData.shape[0],
+    #                                                  data=groundData,
+    #                                                  queryData=singleQueryData,
+    #                                                  metric="cosine",lambdaVal=1.0,magnificationEta=1)
+    # free , total = torch.cuda.mem_get_info()
+    # gb = 1024 ** 3
+    # print(f"Free memory: {free / gb:.2f} GB")
+    # print(f"Total memory: {total / gb:.2f} GB")
+    # greedy_torch = logdetmi_torch.maximize(budget=budget, optimizer='NaiveGreedy', stopIfZeroGain=False,
+    #                                        stopIfNegativeGain=False, verbose=False , show_progress=False,epsilon=1e-5,costs=None,costSensitiveGreedy=False)
+    # print(greedy_torch)
 
-    """Compare C++ and PyTorch implementations of FacilityLocationConditionalGain"""
-    indices_match, gains_match = compare_flcg(groundData, singleQueryData, budget)
-    print("\n")
-    print("Indices match:", indices_match)
-    print("Gains match:", gains_match)
+    # """Compare C++ and PyTorch implementations of FacilityLocationConditionalGain"""
+    # indices_match, gains_match = compare_flcg(groundData, singleQueryData, budget)
+    # print("\n")
+    # print("Indices match:", indices_match)
+    # print("Gains match:", gains_match)
 
     """Compare C++ and PyTorch implementations of GraphCut"""
-    indices_match, gains_match = compare_gc(groundData, budget)
-    print("\n")
-    print("Indices match:", indices_match)
-    print("Gains match:", gains_match)
+    # print("Comparing GraphCut implementations...")
+    # indices_match, gains_match = compare_gc(groundData, budget)
+    # print("\n")
+    # print("Indices match:", indices_match)
+    # print("Gains match:", gains_match)
 
     """Comapre C++ and PyTorch implementations of GraphCutMutualInformation"""
-    indices_match, gains_match = compare_gcmI(groundData, singleQueryData, budget)
+    # indices_match, gains_match = compare_gcmI(groundData, singleQueryData, budget)
+    # print("\n")
+    # print("Indices match:", indices_match)
+    # print("Gains match:", gains_match)
+
+    print("Comparing LogDet implementations...")
+    indices_match, gains_match = compare_logdet(groundData, budget)
     print("\n")
     print("Indices match:", indices_match)
     print("Gains match:", gains_match)

@@ -6,6 +6,7 @@ from .version import __version__
 from .submodlib_pytorch.regular_functions.facility_location import FacilityLocation
 from .submodlib_pytorch.regular_functions.graph_cut import GraphCut
 from .submodlib_pytorch.regular_functions.disparity_min import DisparityMin
+from .submodlib_pytorch.regular_functions.log_determinant import LogDeterminant
 from .logger import get_logging, enable_logging
 """Submodular Mutual Information Functions"""
 from .submodlib_pytorch.mutual_info_functions.FLMI import FacilityLocationMutualInformation

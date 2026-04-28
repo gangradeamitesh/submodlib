@@ -9,18 +9,18 @@ import numpy as np
 class LogDeterminant(BaseFunction):
     
     def __init__(self, n, mode="dense", sijs=None, 
-                 data=None, num_clusters=None, cluster_labels=None, 
-                 metric="cosine") -> None:
+                 data=None, 
+                 metric="cosine",device="cpu",lambdaVal=1.0) -> None:
         if data is None and sijs is None:
             raise Exception("ERROR: Neither ground set data matrix nor similarity kernel provided")
         validate_n(n)
         validate_mode(mode)
 
-        super().__init__(n, mode, sijs, data, num_clusters, metric, cluster_labels)
+        super().__init__(n=n,mode= mode,sijs= sijs,data= data,metric= metric,device=device)
         self.optimizer = None
         
-        self.similarity_with_nearest_in_effective_x = None
         self.memoization_initialized = False
+        self.lambdaVal = lambdaVal
         
         self.effective_ground_set = None
         self._initialize_ground_sets()
@@ -45,10 +45,71 @@ class LogDeterminant(BaseFunction):
     def _initialize_ground_sets(self):
         self.effective_ground_set = self._tensor(torch.arange(self.n), dtype=torch.long)
 
-    def maximize(self , optimizer , budget , stopIfZeroGain , stopIfNegativeGain , epsilon , verbose , show_progress , costs , costSensitiveGreedy):
+    def maximize(self , optimizer , budget , stopIfZeroGain , stopIfNegativeGain , epsilon , verbose , show_progress):
         """Maximize the function using the optimizer"""
         optimizer_instance = OptimizerFactory.get_optimizer(optimizer)
-        return optimizer_instance.optimize(self , budget , stopIfZeroGain , stopIfNegativeGain , epsilon , verbose , show_progress , costs , costSensitiveGreedy)
+        return optimizer_instance.optimize(self , budget=budget , stopIfZeroGain=stopIfZeroGain , stopIfNegativeGain=stopIfNegativeGain , epsilon=epsilon , verbose=verbose , show_progress=show_progress)
+    
+    def batchedGain(self, selected_mask):
+        selected = selected_mask.nonzero(as_tuple=False).flatten()
+        remaining = (~selected_mask).nonzero(as_tuple=False).flatten()
+
+        if remaining.numel() == 0:
+            return (
+                torch.tensor(float("-inf"), device=self.device),
+                torch.tensor(-1, device=self.device),
+            )
+
+        if selected.numel() == 0:
+            current_val = torch.tensor(0.0, device=self.device, dtype=self.sijs.dtype)
+        else:
+            L_X = self.sijs.index_select(0, selected).index_select(1, selected)
+            eye = torch.eye(L_X.size(0), device=self.device, dtype=L_X.dtype)
+            L_X = L_X + self.lambdaVal * eye
+            sign_x, logdet_x = torch.linalg.slogdet(L_X)
+            current_val = (
+                logdet_x
+                if sign_x > 0
+                else torch.tensor(float("-inf"), device=self.device, dtype=self.sijs.dtype)
+            )
+
+        candidate_indices = torch.cat(
+            [
+                selected.unsqueeze(0).expand(remaining.size(0), -1),
+                remaining.unsqueeze(1),
+            ],
+            dim=1,
+        )  # [num_remaining, |X| + 1]
+
+        submats = self.sijs[candidate_indices.unsqueeze(2), candidate_indices.unsqueeze(1)]
+        # [num_remaining, |X| + 1, |X| + 1]
+
+        eye = torch.eye(
+            submats.size(-1),
+            device=self.device,
+            dtype=submats.dtype,
+        ).unsqueeze(0)
+
+        submats = submats + self.lambdaVal * eye
+
+        signs, logdets = torch.linalg.slogdet(submats)
+
+        candidate_vals = torch.where(
+            signs > 0,
+            logdets,
+            torch.full_like(logdets, float("-inf")),
+        )
+
+        gains = candidate_vals - current_val
+
+        best_pos = torch.argmax(gains)
+        best_gain = gains[best_pos]
+        best_idx = remaining[best_pos]
+
+        return best_gain, best_idx
+    
+    def updateBatchMemo(self, element):
+        pass
 
 
     def marginalGain(self , X , element):
