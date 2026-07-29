@@ -1,1 +1,3 @@
-__all__ = []
+from .FLCMI import FacilityLocationConditionalMutualInformation
+
+__all__ = ["FacilityLocationConditionalMutualInformation"]

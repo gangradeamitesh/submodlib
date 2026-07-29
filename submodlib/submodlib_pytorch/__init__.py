@@ -9,6 +9,7 @@ from .mutual_info_functions import (
     LogDeterminantMutualInformation,
 )
 from .conditional_gain_functions import FacilityLocationConditionalGain, GraphCutConditionalGain
+from .conditional_mutual_info_funtions import FacilityLocationConditionalMutualInformation
 from .userValidator import validate_mode, validate_n, validate_sep_rep, validate_sijs
 
 __all__ = [
@@ -17,6 +18,7 @@ __all__ = [
     "DenseSimilarity",
     "FacilityLocation",
     "FacilityLocationConditionalGain",
+    "FacilityLocationConditionalMutualInformation",
     "FacilityLocationMutualInformation",
     "FacilityLocationVariantMutualInformation",
     "GraphCut",
